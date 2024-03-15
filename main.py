@@ -1,6 +1,7 @@
 from utility import *
 from geo_services import *
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from scipy.ndimage import uniform_filter
 
 
 
@@ -233,11 +234,11 @@ def terrain_encoding(terrain_filename="terrain_RGB_data.npy", trails_filename="t
     terrain_encoding = {
         "Ukjent":       1,
         "Sti og vei":   1, 
-        "Åpen fastmark":0.9,
+        "Åpen fastmark":0.8,
         "Bebygd":       0.8,
         "Dyrket mark":  0.7, 
-        "Skog":         0.6,
-        "Myr":          0.3,
+        "Skog":         0.7,
+        "Myr":          0.5,
         "Ferskvann":    0.1,
         "Hav":          0.05,   
     }
@@ -257,7 +258,10 @@ def terrain_encoding(terrain_filename="terrain_RGB_data.npy", trails_filename="t
                     last_type = terrain_name
                     break
             if terrain_type[i, j] == 0:
-                terrain_type[i, j] = terrain_encoding[last_type]
+                if terrain_type[i-1, j] == 0.3: # Myr
+                    terrain_type[i, j] = terrain_encoding["Myr"]
+                else:
+                    terrain_type[i, j] = terrain_encoding[last_type]
                 
         if i % (terrain_data.shape[1] / 100*5) == 0:
             if i != 0:
@@ -351,31 +355,60 @@ def get_all_map_data(lat, lng, rect_radius=1000, map_extention=0, folder="output
     create_terrain_RGB_array(f'{folder}{start_coords[0]}_{start_coords[1]}_terrain_composite.tif')
 
     
+
     
+              
 
-def plot_test():
-    terrain_data = np.load("output/array/terrain_data_encoded.npy")
-    print(terrain_data.shape)
-    print(terrain_data[:10,:10])
-    plt.imshow(terrain_data, cmap='terrain')
-    plt.colorbar()
-    plt.show()
-
-
-def test():
-    start_lat = 68.4384639765794
-    start_lng = 17.427069490865254
-    rect_radius = 1000  # 1 km radius from center, total 2 km x 2 km area
-    map_extention = 1   # extends from center point by 2*map_extention*rect_radius in each direction
+def collect_data_test():
+    start_lat = 68.443012
+    start_lng = 17.527166
+    rect_radius = 1000 # 1 km radius from center, total 2 km x 2 km area
+    map_extention = 0   # extends from center point by 2*map_extention*rect_radius in each direction
 
     get_all_map_data(start_lat, start_lng, rect_radius, map_extention)
 
-    terrain_encoding()
+    
 
 
 
 if __name__ == "__main__":
-    test()
-    plot_test()
+    collect = False
+    encode = False
+    heatmap_test = False
 
+    if collect:
+        collect_data_test()
 
+    if encode:
+        terrain_encoding()
+    
+
+    if heatmap_test:
+        terrain_data = np.load("output/array/terrain_data_encoded.npy")
+        terrain_data = reduce_resolution(terrain_data, factor=10, method="max")
+        print(terrain_data.shape)
+        #plot_array(terrain_data, cmap='terrain', label="Terreng")
+
+        height_data = np.load("output/array/height_data.npy")
+        height_data = height_data[:-1,:-1]
+        height_data = reduce_resolution(height_data, factor=10, method="mean")
+
+        steepness_map = calc_steepness(height_data)
+        print(steepness_map.shape)
+        #plot_array(steepness_map, cmap='terrain', label="Stigning (%)")
+
+        normalized_steepness_map = steepness_map / np.max(steepness_map)
+        normalized_steepness_map = 1 - normalized_steepness_map # Invert the steepness
+        print(normalized_steepness_map.shape)
+        #plot_array(normalized_steepness_map, cmap='terrain', label="Normalisert stigning")
+
+        heatmap = combine_matrixes(terrain_data, normalized_steepness_map, method="square")
+        print(heatmap.shape)
+        #plot_array(heatmap, cmap='RdYlGn', label="Kombinert heatmap")
+        plt.imshow(heatmap, cmap='hot', interpolation='nearest')
+        plt.show()
+
+        smoothed_heatmap = uniform_filter(heatmap, size=10)
+        plt.imshow(smoothed_heatmap, cmap='hot', interpolation='nearest')
+        plt.show()
+    

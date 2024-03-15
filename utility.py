@@ -3,7 +3,8 @@ import rasterio
 from rasterio.merge import merge
 from rasterio.io import MemoryFile
 from PIL import Image
-
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 
@@ -244,6 +245,39 @@ def create_composite_image(images, output_path):
 
 
 
+def reduce_resolution(data, factor=10, method="mean"):
+    if method == "mean":
+        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).mean(axis=1).mean(axis=2)
+    elif method == "max":
+        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).max(axis=1).max(axis=2)
+    elif method == "min":
+        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).mean(axis=1).min(axis=2)
 
+def calc_steepness(height_data):
+    # Calculate gradients along both axes
+    grad_x, grad_y = np.gradient(height_data)
+    # Calculate the steepness/elevation change
+    steepness = np.sqrt(grad_x**2 + grad_y**2)
+    # steepness now represents the elevation change or steepness for each square
+    return steepness
 
+def combine_matrixes(terrain, steepness, method="mean"):
+    if terrain.shape != steepness.shape:
+        print("Matrixes are not the same size")
+        return
+    
+    if method == "mean":
+        return (terrain + steepness) / 2
+    
+    elif method == "multiply":
+        return terrain * steepness
+    
+    elif method == "square":
+        return terrain * steepness**2
+    
 
+def plot_array(array, cmap="terrain", label=""):
+    plt.imshow(array, cmap=cmap)
+    plt.colorbar(label=label)
+    plt.axis('off')
+    plt.show()
