@@ -1,7 +1,9 @@
 from utility import *
 from geo_services import *
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from scipy.ndimage import uniform_filter
+from scipy.ndimage import uniform_filter, generic_filter, maximum_filter
+from matplotlib.patches import Circle
+import math
 
 
 
@@ -169,36 +171,37 @@ def get_trail_map(bbox, folder="output/"):
         except:
             continue
 
-    if not gdf_list:
+    if len(gdf_list) == 0:
         print("No trail data found")
         return
 
-    combined_df = pd.concat([*gdf_list], ignore_index=True)
-    gdf = gpd.GeoDataFrame(combined_df, geometry="geometry")
-    #print(gdf.crs)
-    gdf = gdf.to_crs(epsg=25833)
+    else:
+        combined_df = pd.concat([*gdf_list], ignore_index=True)
+        gdf = gpd.GeoDataFrame(combined_df, geometry="geometry")
+        #print(gdf.crs)
+        gdf = gdf.to_crs(epsg=25833)
 
-    # save gdf plot to file as image
-    gdf.plot()
-    plt.savefig(f'{folder}trails.png')
-    print(f'Trail plot saved to {folder}trails.png')
+        # save gdf plot to file as image
+        gdf.plot()
+        plt.savefig(f'{folder}trails.png')
+        print(f'Trail plot saved to {folder}trails.png')
 
-    minx, miny, maxx, maxy = bbox
-    width = int(maxx - minx)
-    height = int(maxy - miny)
-    transform = from_origin(minx, maxy, 1, 1)  # 1x1 meter resolution
+        minx, miny, maxx, maxy = bbox
+        width = int(maxx - minx)
+        height = int(maxy - miny)
+        transform = from_origin(minx, maxy, 1, 1)  # 1x1 meter resolution
 
-    # rasterization
-    raster = rasterize(
-        [(shape, 1) for shape in gdf.geometry],
-        out_shape=(height, width),
-        fill=0,
-        transform=transform,
-        all_touched=True
-    )
-    # raster is now a 2D NumPy array with 1s for trails and 0s elsewhere
-    np.save(f'{folder}array/trail_data.npy', raster)
-    print(f'Trail data np array saved to {folder}array/trail_data.npy')
+        # rasterization
+        raster = rasterize(
+            [(shape, 1) for shape in gdf.geometry],
+            out_shape=(height, width),
+            fill=0,
+            transform=transform,
+            all_touched=True
+        )
+        # raster is now a 2D NumPy array with 1s for trails and 0s elsewhere
+        np.save(f'{folder}array/trail_data.npy', raster)
+        print(f'Trail data np array saved to {folder}array/trail_data.npy')
 
 
 def terrain_encoding(terrain_filename="terrain_RGB_data.npy", trails_filename="trail_data.npy", folder="output/array/"):
@@ -234,11 +237,11 @@ def terrain_encoding(terrain_filename="terrain_RGB_data.npy", trails_filename="t
     terrain_encoding = {
         "Ukjent":       1,
         "Sti og vei":   1, 
-        "Åpen fastmark":0.8,
+        "Åpen fastmark":0.9,
         "Bebygd":       0.8,
         "Dyrket mark":  0.7, 
         "Skog":         0.7,
-        "Myr":          0.5,
+        "Myr":          0.4,
         "Ferskvann":    0.1,
         "Hav":          0.05,   
     }
@@ -258,7 +261,8 @@ def terrain_encoding(terrain_filename="terrain_RGB_data.npy", trails_filename="t
                     last_type = terrain_name
                     break
             if terrain_type[i, j] == 0:
-                if terrain_type[i-1, j] == 0.3: # Myr
+                # check a if "Myr" is in a 3x3 area around the pixel
+                if terrain_encoding["Myr"] in terrain_type[i-1:i+2, j-1:j+2]:
                     terrain_type[i, j] = terrain_encoding["Myr"]
                 else:
                     terrain_type[i, j] = terrain_encoding[last_type]
@@ -358,57 +362,199 @@ def get_all_map_data(lat, lng, rect_radius=1000, map_extention=0, folder="output
 
     
               
+def calc_distance(matrix, energy, center, end_x, end_y):
+    x0, y0 = center
+    x1, y1 = end_x, end_y
+    dx = abs(x1-x0)
+    dy = abs(y1-y0)
+    x, y = x0, y0
+    sx = -1 if x0 > x1 else 1
+    sy = -1 if y0 > y1 else 1
 
-def collect_data_test():
-    start_lat = 68.443012
-    start_lng = 17.527166
-    rect_radius = 1000 # 1 km radius from center, total 2 km x 2 km area
-    map_extention = 0   # extends from center point by 2*map_extention*rect_radius in each direction
+    energy_used = 0
 
-    get_all_map_data(start_lat, start_lng, rect_radius, map_extention)
+    if dx > dy:
+        err = dx / 2.0
+        while x != x1:
+            energy_used += 1 / matrix[x][y]
+            err -= dy
+            if err < 0:
+                y += sy
+                err += dx
+                energy_used += 0.5 / matrix[x][y]
+            x += sx
+            if energy_used > energy:
+                break
+    else:
+        err = dy / 2.0
+        while y != y1:
+            energy_used += 1 / matrix[x][y]
+            err -= dx
+            if err < 0:
+                x += sx
+                err += dy
+                energy_used += 0.5 / matrix[x][y]
+            y += sy
+            if energy_used > energy:
+                break
+ 
+    return (x, y)   # end point
+
+
+
+    
+
 
     
 
 
 
 if __name__ == "__main__":
-    collect = False
-    encode = False
-    heatmap_test = False
+    plot = True
 
-    if collect:
-        collect_data_test()
-
-    if encode:
-        terrain_encoding()
+    collect = True
+    encode = True
+    reduced_resolution = True
+    calculate_steepness = True
+    combine_matrix = True
+    smoothed_matrix = True
+    straight_line_test = True
     
 
-    if heatmap_test:
+    if collect:
+        start_lat = 68.443440
+        start_lng = 17.527820
+        rect_radius = 500 # meter radius from center, total 2*r x 2*r area
+        map_extention = 0   # extends from center point by 2*map_extention*rect_radius in each direction
+
+        get_all_map_data(start_lat, start_lng, rect_radius, map_extention)
+
+    if encode:
+        filename1 = "terrain_RGB_data.npy"
+        filename2 = "trail_data.npy"
+        output = "output/array/"
+        terrain_encoding(filename1, filename2, output)
+        if plot:
+            terrain_data = np.load("output/array/terrain_data_encoded.npy")
+            plot_array(terrain_data, cmap='terrain', label="Terreng")
+    
+    if reduced_resolution:
+        factor = 5
         terrain_data = np.load("output/array/terrain_data_encoded.npy")
-        terrain_data = reduce_resolution(terrain_data, factor=10, method="max")
-        print(terrain_data.shape)
-        #plot_array(terrain_data, cmap='terrain', label="Terreng")
+        terrain_data = reduce_resolution(terrain_data, factor, method="max")
 
         height_data = np.load("output/array/height_data.npy")
         height_data = height_data[:-1,:-1]
-        height_data = reduce_resolution(height_data, factor=10, method="mean")
+        height_data = reduce_resolution(height_data, factor, method="mean")
+
+    if calculate_steepness:
+        if not reduced_resolution:
+            height_data = np.load("output/array/height_data.npy")
+            height_data = height_data[:-1,:-1]
 
         steepness_map = calc_steepness(height_data)
-        print(steepness_map.shape)
-        #plot_array(steepness_map, cmap='terrain', label="Stigning (%)")
-
+        #print(steepness_map.shape)
+        
         normalized_steepness_map = steepness_map / np.max(steepness_map)
         normalized_steepness_map = 1 - normalized_steepness_map # Invert the steepness
-        print(normalized_steepness_map.shape)
-        #plot_array(normalized_steepness_map, cmap='terrain', label="Normalisert stigning")
+        normalized_steepness_map = normalized_steepness_map ** 2
+        #print(normalized_steepness_map.shape)
 
-        heatmap = combine_matrixes(terrain_data, normalized_steepness_map, method="square")
-        print(heatmap.shape)
-        #plot_array(heatmap, cmap='RdYlGn', label="Kombinert heatmap")
-        plt.imshow(heatmap, cmap='hot', interpolation='nearest')
-        plt.show()
+        if plot:
+            plot_array(steepness_map, cmap='terrain', label="Stigning (%)")
+            plot_array(normalized_steepness_map, cmap='terrain', label="Normalisert stigning 0-1")
+        
+        np.save("output/array/normalized_steepness_map.npy", normalized_steepness_map)
 
-        smoothed_heatmap = uniform_filter(heatmap, size=10)
-        plt.imshow(smoothed_heatmap, cmap='hot', interpolation='nearest')
-        plt.show()
+    if combine_matrix:
+        if not reduced_resolution:
+            terrain_data = np.load("output/array/terrain_data_encoded.npy")
+        if not calculate_steepness:
+            normalized_steepness_map = np.load("output/array/normalized_steepness_map.npy")
+
+        combined_matrix = combine_matrixes(terrain_data, normalized_steepness_map, method="square")
+
+        if smoothed_matrix:
+            filter_size = 3     # nxn filter size
+            #combined_matrix = uniform_filter(combined_matrix, size=filter_size)
+            combined_matrix = maximum_filter(combined_matrix, size=filter_size)
+
+        np.save("output/array/combined_matrix.npy", combined_matrix)
+
+    if straight_line_test:
+        if not reduced_resolution:
+            terrain_data = np.load("output/array/terrain_data_encoded.npy")
+            height_data = np.load("output/array/height_data.npy")
+            height_data = height_data[:-1,:-1]
+
+        if not calculate_steepness:
+            normalized_steepness_map = np.load("output/array/normalized_steepness_map.npy")
+
+        if not combine_matrix:
+            combined_matrix = np.load("output/array/combined_matrix.npy")
+        
+        radius = combined_matrix.shape[0] / 2
+
+        if plot:
+            plt.imshow(combined_matrix, cmap='terrain', interpolation='nearest')
+            circle = Circle((radius, radius), (radius-(radius/10)), color="blue", fill=False)
+            plt.gca().add_patch(circle)
+            plt.axis('equal')
+            plt.title("Combined matrix with edge circle")
+            plt.show()
+
+        center = (int(radius), int(radius))
+        dist_factor = 1.25
+        max_distance = radius * dist_factor
+       
+        end_points_75 = []
+        end_points_50 = []
+        end_points_25 = []
+
+        for n in range (1,4,1):
+            energy = max_distance * n / 2
+
+            for angle in range(360):
+                radians = math.radians(angle)
+                length = max(2*radius - center[0], 2*radius - center[1])
+                end_x = int(center[0] + length * math.cos(radians))
+                end_y = int(center[1] + length * math.sin(radians))
+
+                end_point = calc_distance(combined_matrix, energy, center, end_x, end_y)
+                if n == 1:
+                    end_points_75.append(end_point)
+                elif n == 2:
+                    end_points_50.append(end_point)
+                elif n == 3:
+                    end_points_25.append(end_point)
+
+        if plot:
+            plt.imshow(combined_matrix, cmap='terrain', interpolation='nearest')
+            circle = Circle((radius, radius), (radius-(radius/10)), color="blue", fill=False)
+            plt.gca().add_patch(circle)
+
+            for point in end_points_25:
+                plt.plot([center[1], point[1]], [center[0], point[0]], color='red', linewidth=1)
+
+            for point in end_points_50:
+                plt.plot([center[1], point[1]], [center[0], point[0]], color='yellow', linewidth=1)
+
+            for point in end_points_75:
+                plt.plot([center[1], point[1]], [center[0], point[0]], color='green', linewidth=1)
+
+            x_coords, y_coords = zip(*end_points_25)
+            plt.scatter(y_coords, x_coords, color='red', s=5)
+
+            x_coords, y_coords = zip(*end_points_50)
+            plt.scatter(y_coords, x_coords, color='yellow', s=5)
+
+            x_coords, y_coords = zip(*end_points_75)
+            plt.scatter(y_coords, x_coords, color='green', s=5)
+
+            plt.axis('equal')
+            plt.title("Straight line heatmap")
+            plt.show()
+
+
+
     

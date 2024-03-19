@@ -273,7 +273,8 @@ def combine_matrixes(terrain, steepness, method="mean"):
         return terrain * steepness
     
     elif method == "square":
-        return terrain * steepness**2
+        return (terrain * steepness) ** 2
+        
     
 
 def plot_array(array, cmap="terrain", label=""):
