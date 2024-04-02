@@ -8,6 +8,8 @@ import math
 
 
 
+
+
 def get_height_map(center_of_map_squares, start_coords=("00.00","00.00"), rect_radius=1000, folder="output/"):
     """
     Retrieves height map data from a web service for a given set of map squares and saves a composite tiff to file.
@@ -232,16 +234,16 @@ def terrain_encoding(terrain_filename="terrain_RGB_data.npy", trails_filename="t
         "Myr": (181, 236, 252),
         "Bebygd": (252, 219, 214),
         "Sti og vei": (179, 120, 76),
-        "Dyrket mark": (255, 247, 167),
+        "Dyrket mark": (255, 247, 167)
     }
     terrain_encoding = {
         "Ukjent":       1,
         "Sti og vei":   1, 
-        "Åpen fastmark":0.9,
-        "Bebygd":       0.8,
-        "Dyrket mark":  0.7, 
-        "Skog":         0.7,
-        "Myr":          0.4,
+        "Åpen fastmark":0.7,
+        "Bebygd":       0.7,
+        "Dyrket mark":  0.6, 
+        "Skog":         0.5,
+        "Myr":          0.3,
         "Ferskvann":    0.1,
         "Hav":          0.05,   
     }
@@ -265,7 +267,7 @@ def terrain_encoding(terrain_filename="terrain_RGB_data.npy", trails_filename="t
                 if terrain_encoding["Myr"] in terrain_type[i-1:i+2, j-1:j+2]:
                     terrain_type[i, j] = terrain_encoding["Myr"]
                 else:
-                    terrain_type[i, j] = terrain_encoding[last_type]
+                    terrain_type[i, j] = terrain_encoding["Åpen fastmark"]  # Unknown terrain type
                 
         if i % (terrain_data.shape[1] / 100*5) == 0:
             if i != 0:
@@ -362,63 +364,33 @@ def get_all_map_data(lat, lng, rect_radius=1000, map_extention=0, folder="output
 
     
               
-def calc_distance(matrix, energy, center, end_x, end_y):
-    x0, y0 = center
-    x1, y1 = end_x, end_y
-    dx = abs(x1-x0)
-    dy = abs(y1-y0)
-    x, y = x0, y0
-    sx = -1 if x0 > x1 else 1
-    sy = -1 if y0 > y1 else 1
 
-    energy_used = 0
 
-    if dx > dy:
-        err = dx / 2.0
-        while x != x1:
-            energy_used += 1 / matrix[x][y]
-            err -= dy
-            if err < 0:
-                y += sy
-                err += dx
-                energy_used += 0.5 / matrix[x][y]
-            x += sx
-            if energy_used > energy:
-                break
-    else:
-        err = dy / 2.0
-        while y != y1:
-            energy_used += 1 / matrix[x][y]
-            err -= dx
-            if err < 0:
-                x += sx
-                err += dy
-                energy_used += 0.5 / matrix[x][y]
-            y += sy
-            if energy_used > energy:
-                break
- 
-    return (x, y)   # end point
 
 
 
     
 
-
-    
 
 
 
 if __name__ == "__main__":
+    ####################################################################################################
     plot = True
 
-    collect = True
-    encode = True
-    reduced_resolution = True
-    calculate_steepness = True
-    combine_matrix = True
-    smoothed_matrix = True
-    straight_line_test = True
+    r = False   # Set to run all collection and preprocessing functions
+    collect = r or False
+    encode = r or False
+    reduced_resolution = r or False
+    calculate_steepness = r or False
+    combine_matrix = r or False
+    smoothed_matrix = r or False
+
+    straight_line_test = False
+    branching_line_test = True
+    
+    ####################################################################################################
+    
     
 
     if collect:
@@ -426,8 +398,8 @@ if __name__ == "__main__":
         start_lng = 17.527820
         rect_radius = 500 # meter radius from center, total 2*r x 2*r area
         map_extention = 0   # extends from center point by 2*map_extention*rect_radius in each direction
-
         get_all_map_data(start_lat, start_lng, rect_radius, map_extention)
+
 
     if encode:
         filename1 = "terrain_RGB_data.npy"
@@ -438,6 +410,7 @@ if __name__ == "__main__":
             terrain_data = np.load("output/array/terrain_data_encoded.npy")
             plot_array(terrain_data, cmap='terrain', label="Terreng")
     
+
     if reduced_resolution:
         factor = 5
         terrain_data = np.load("output/array/terrain_data_encoded.npy")
@@ -447,6 +420,7 @@ if __name__ == "__main__":
         height_data = height_data[:-1,:-1]
         height_data = reduce_resolution(height_data, factor, method="mean")
 
+
     if calculate_steepness:
         if not reduced_resolution:
             height_data = np.load("output/array/height_data.npy")
@@ -455,6 +429,7 @@ if __name__ == "__main__":
         steepness_map = calc_steepness(height_data)
         #print(steepness_map.shape)
         
+        steepness_map[steepness_map > 25] = 25  # Cap the steepness at 25%
         normalized_steepness_map = steepness_map / np.max(steepness_map)
         normalized_steepness_map = 1 - normalized_steepness_map # Invert the steepness
         normalized_steepness_map = normalized_steepness_map ** 2
@@ -462,9 +437,10 @@ if __name__ == "__main__":
 
         if plot:
             plot_array(steepness_map, cmap='terrain', label="Stigning (%)")
-            plot_array(normalized_steepness_map, cmap='terrain', label="Normalisert stigning 0-1")
+            plot_array(normalized_steepness_map, cmap='terrain', label="Normalisert stigning (0-1)")
         
         np.save("output/array/normalized_steepness_map.npy", normalized_steepness_map)
+
 
     if combine_matrix:
         if not reduced_resolution:
@@ -479,7 +455,15 @@ if __name__ == "__main__":
             #combined_matrix = uniform_filter(combined_matrix, size=filter_size)
             combined_matrix = maximum_filter(combined_matrix, size=filter_size)
 
+        if plot:
+            plt.imshow(combined_matrix, cmap='terrain', interpolation='nearest')
+            plt.axis('equal')
+            plt.title("Combined matrix of height and terrain (0-1)")
+            plt.show()
+
         np.save("output/array/combined_matrix.npy", combined_matrix)
+
+
 
     if straight_line_test:
         if not reduced_resolution:
@@ -494,25 +478,16 @@ if __name__ == "__main__":
             combined_matrix = np.load("output/array/combined_matrix.npy")
         
         radius = combined_matrix.shape[0] / 2
-
-        if plot:
-            plt.imshow(combined_matrix, cmap='terrain', interpolation='nearest')
-            circle = Circle((radius, radius), (radius-(radius/10)), color="blue", fill=False)
-            plt.gca().add_patch(circle)
-            plt.axis('equal')
-            plt.title("Combined matrix with edge circle")
-            plt.show()
-
         center = (int(radius), int(radius))
-        dist_factor = 1.25
-        max_distance = radius * dist_factor
+        dist_range_factor = 1.25
+        max_distance = radius * dist_range_factor
        
         end_points_75 = []
         end_points_50 = []
         end_points_25 = []
 
         for n in range (1,4,1):
-            energy = max_distance * n / 2
+            remaining_energy = max_distance * n / 2
 
             for angle in range(360):
                 radians = math.radians(angle)
@@ -520,7 +495,7 @@ if __name__ == "__main__":
                 end_x = int(center[0] + length * math.cos(radians))
                 end_y = int(center[1] + length * math.sin(radians))
 
-                end_point = calc_distance(combined_matrix, energy, center, end_x, end_y)
+                end_point, _ = calc_travel_distance(combined_matrix, remaining_energy, center, end_x, end_y)
                 if n == 1:
                     end_points_75.append(end_point)
                 elif n == 2:
@@ -554,6 +529,69 @@ if __name__ == "__main__":
             plt.axis('equal')
             plt.title("Straight line heatmap")
             plt.show()
+
+
+
+    if branching_line_test:
+        if not reduced_resolution:
+            terrain_data = np.load("output/array/terrain_data_encoded.npy")
+            height_data = np.load("output/array/height_data.npy")
+            height_data = height_data[:-1,:-1]
+
+        if not calculate_steepness:
+            normalized_steepness_map = np.load("output/array/normalized_steepness_map.npy")
+
+        if not combine_matrix:
+            combined_matrix = np.load("output/array/combined_matrix.npy")
+        
+        radius = combined_matrix.shape[0] / 2
+        center = (int(radius), int(radius))
+        dist_range_factor = 2.5     # deterimines "max" travel distance
+        max_distance = radius * dist_range_factor
+        max_energy = max_distance
+        alpha = 7  # "concavity" of the search area hull
+
+        green_coords = set()
+        yellow_coords = set()
+        red_coords = set()
+        sets = (green_coords, yellow_coords, red_coords)
+
+        for initial_angle in range(360):
+            branching(combined_matrix, center[0], center[1], initial_angle, max_energy, max_energy, sets)
+
+        print(len(red_coords))  # number of endpoints/paths
+
+        # convert sets to np arrays
+        red_points = np.array(list(red_coords))
+        yellow_points = np.array(list(yellow_coords))
+        green_points = np.array(list(green_coords))
+
+        # compute concave hulls
+        concave_hull_r = compute_concave_hull_from_points(red_points, alpha)
+        concave_hull_y = compute_concave_hull_from_points(yellow_points, alpha)
+        concave_hull_g = compute_concave_hull_from_points(green_points, alpha)
+
+
+        if plot:
+            plt.imshow(combined_matrix, cmap='terrain', interpolation='nearest')
+            circle = Circle((radius, radius), (radius-(radius/10)), color="blue", fill=False)   # search area circle
+            plt.gca().add_patch(circle)
+
+            if concave_hull_r:
+                x_r, y_r = get_polygon_from_hull(concave_hull_r)
+                plt.fill(x_r, y_r, edgecolor='r',linewidth=3, fill=False)
+            if concave_hull_y:
+                x_y, y_y = get_polygon_from_hull(concave_hull_y)
+                plt.fill(x_y, y_y, edgecolor='y',linewidth=3, fill=False)
+            if concave_hull_g:
+                x_g, y_g = get_polygon_from_hull(concave_hull_g)
+                plt.fill(x_g, y_g, edgecolor='g',linewidth=3, fill=False)
+
+            plt.axis('equal')
+            plt.show()
+    
+
+
 
 
 
