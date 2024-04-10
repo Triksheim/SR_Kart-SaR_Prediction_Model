@@ -43,7 +43,7 @@ def wcs_request(url, params, retry_count=10):
         if response.status_code == 200:
             content_type = response.headers.get('Content-Type')
             if 'multipart' in content_type: # contains tiff image
-                if len(response.content) > 10000:
+                if len(response.content) > 100000:
                     return response
                 print(f'Error:Insufficient data. Count: {len(response.content)} bytes')
                 

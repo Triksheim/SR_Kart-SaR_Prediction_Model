@@ -8,8 +8,9 @@ import numpy as np
 from shapely.geometry import Polygon, MultiLineString, MultiPolygon
 from shapely.ops import polygonize, unary_union
 from scipy.spatial import Delaunay
-import math
-import random
+import geopandas as gpd
+
+
 
 
 
@@ -119,7 +120,7 @@ def extract_tiff_from_multipart_response(response, output_path="", save_to_file=
     - output_path (str): The path to save the GeoTIFF file.
     - save_to_file (bool): Whether to save the GeoTIFF to a file or not. Returns the tiff_data when False.
     """
-    
+    print(len(response.content))
     boundary = b'--wcs'
     start_of_tiff_part = response.content.find(boundary + b'\nContent-Type: image/tiff')
 
@@ -258,13 +259,7 @@ def reduce_resolution(data, factor=10, method="mean"):
     elif method == "min":
         return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).mean(axis=1).min(axis=2)
 
-def calc_steepness(height_data):
-    # Calculate gradients along both axes
-    grad_x, grad_y = np.gradient(height_data)
-    # Calculate the steepness/elevation change
-    steepness = np.sqrt(grad_x**2 + grad_y**2)
-    # steepness now represents the elevation change or steepness for each square
-    return steepness
+
 
 def combine_matrixes(terrain, steepness, method="mean"):
     if terrain.shape != steepness.shape:
@@ -281,170 +276,15 @@ def combine_matrixes(terrain, steepness, method="mean"):
         return (terrain * steepness) ** 2
         
     
-def calc_travel_distance(matrix, energy, center, end_x, end_y, step_limit=9999):
-    x0, y0 = center
-    x1, y1 = end_x, end_y
-    dx = abs(x1-x0)
-    dy = abs(y1-y0)
-    x, y = x0, y0
-    sx = -1 if x0 > x1 else 1
-    sy = -1 if y0 > y1 else 1
-
-    energy_used = 0
-    steps = 0
-
-    if dx > dy:
-        err = dx / 2.0
-        while x != x1:
-            energy_used += 1 / matrix[x][y]
-            steps += 1
-            err -= dy
-            if err < 0:
-                y += sy
-                err += dx
-                energy_used += 0.5 / matrix[x][y]
-            x += sx
-            if energy_used > energy or steps > step_limit:
-                break
-    else:
-        err = dy / 2.0
-        while y != y1:
-            energy_used += 1 / matrix[x][y]
-            steps += 1
-            err -= dx
-            if err < 0:
-                x += sx
-                err += dy
-                energy_used += 0.5 / matrix[x][y]
-            y += sy
-            if energy_used > energy or steps > step_limit:
-                break
-
-    energy_left = energy - energy_used
-    return (x, y), energy_left    # end point
 
 
 
 
-def traverse(matrix, energy, start, target_direction, step_limit=9999):
-    x0, y0 = start
-    radians = math.radians(target_direction)
-    
-    # Calculate end points based on the step limit and direction
-    dx = math.cos(radians) * step_limit
-    dy = math.sin(radians) * step_limit
-    # Theoretical end point considering no obstacles
-    x1, y1 = x0 + dx, y0 + dy
 
-    # Absolute values needed for Bresenham's algorithm
-    dx = abs(dx)
-    dy = abs(dy)
-    
-    # Determine the direction of steps (-1 for left/up, 1 for right/down)
-    sx = -1 if x0 > x1 else 1
-    sy = -1 if y0 > y1 else 1
-
-    x, y = x0, y0
-    energy_used = 0
-    steps = 0
-    err = dx - dy   # Error variable for Bresenham's line algorithm
-
-    # Start traversal
-    while True:
-        # Check bounds to ensure the current position is within matrix
-        if 0 <= x < matrix.shape[1] and 0 <= y < matrix.shape[0]:
-            # Remember previous position before potential move
-            prev_x, prev_y = x, y
-
-            # If energy is depleted, step back to last valid position
-            if energy_used > energy:
-                x -= sx
-                y -= sy
-                break
-        else:
-            # If out of bounds, step back to last valid position
-            x -= sx
-            y -= sy
-            break
-
-        # If target is reached or steps exceed the limit, stop the traversal
-        if x == int(x1) and y == int(y1) or steps > step_limit:
-            break
-
-        # Bresenham's algorithm for line drawing
-        e2 = 2 * err
-        if e2 >= -dy:
-            err -= dy
-            x += sx
-        if e2 <= dx:
-            err += dx
-            y += sy
-
-        # Calculate energy cost based on the type of move and matrix values
-        if (prev_x != x) and (prev_y != y):
-            # Diagonal move, use √2 times the straight cost from the matrix
-            energy_cost_diagonal = math.sqrt(2) / matrix[int(y)][int(x)]
-            energy_used += energy_cost_diagonal
-        else:
-            # Straight move, cost is inverse of matrix value
-            energy_cost_straight = 1 / matrix[int(y)][int(x)]
-            energy_used += energy_cost_straight
-        
-        steps += 1
-        
-    energy_left = max(energy - energy_used, 0)
-    return (int(x), int(y)), energy_left
-
-
-
-def branching(matrix, x, y, angle, initial_energy, current_energy, sets):
-    green, yellow, red = sets   # refrenced sets from main function
-    if current_energy <= 0:
-        red.add((x, y)) # red coords
-        return
-
-    # movement
-    steps = 5   # steps to move 
-    (new_x, new_y), new_energy = traverse(matrix, current_energy, (x, y), angle, steps)
-
-    # save green and yellow coords if energy dips threshold
-    if current_energy > initial_energy*0.66:
-        if new_energy < initial_energy*0.66:
-            green.add((new_x, new_y))
-    elif current_energy > initial_energy*0.33:
-        if new_energy < initial_energy*0.33:
-            yellow.add((new_x, new_y))
-
-    if new_energy > 0:
-        # Branching conditions
-        terrain_change = matrix[new_x, new_y] - matrix[x, y]
-        if terrain_change < -0.05 and (new_x, new_y) not in red:
-            for i in range(-2, 3, 1):
-                branch_angle = angle + i * 45  # Calculate the new direction
-                branch_angle %= 360  # Normalize angle
-                branching(matrix, new_x, new_y, branch_angle, initial_energy, new_energy, sets)
-        # Random branching
-        elif random.randint(1,100) <= 5:    
-            if (new_x, new_y) not in red and (new_x, new_y) not in yellow and (new_x, new_y) not in green:
-                for i in range(-5, 6, 1):
-                    branch_angle = angle + i * 10  # Calculate the new direction
-                    branch_angle %= 360  # Normalize angle
-                    branching(matrix, new_x, new_y, branch_angle, initial_energy, new_energy, sets)
-        else:
-            # Continue in the same direction
-            branching(matrix, new_x, new_y, angle, initial_energy, new_energy, sets)
-        
-    else:
-        # Energy depleted, stop recursion and save end point
-        red.add((new_x, new_y)) # red coords
-        
-
-
-
-
-def plot_array(array, cmap="terrain", label=""):
+def plot_array(array, cmap="terrain", label="", title="Array Plot"):
     plt.imshow(array, cmap=cmap)
     plt.colorbar(label=label)
+    plt.title(title)
     plt.axis('off')
     plt.show()
 
@@ -499,7 +339,7 @@ def compute_concave_hull_from_points(points, alpha):
     concave_hull = unary_union(triangles)
     return concave_hull
 
-def get_polygon_from_hull(hull):
+def get_polygon_coords_from_hull(hull):
     # handling both Polygon and MultiPolygon cases
     if isinstance(hull, MultiPolygon):
         largest_polygon = None
@@ -519,3 +359,34 @@ def get_polygon_from_hull(hull):
         return x, y
     else:
         print("The resulting geometry is neither a Polygon nor a MultiPolygon.")
+
+
+
+def create_polygon_map_overlay(matrix, dist, coords, hull, color="red", crs="EPSG:25833"):
+            matrix_width, matrix_height = matrix.shape[0], matrix.shape[1]
+            distance_per_index = dist  # Meters per index in the matrix
+            lat, lng = coords
+            center_x, center_y = transform_coordinates_to_utm(lat, lng)
+
+            x, y = get_polygon_coords_from_hull(hull)
+            hull_indices = list(zip(x, y))
+
+            # Convert matrix indices to geographic coordinates with y-axis correction
+            concave_hull_geo = []
+            for x_idx, y_idx in hull_indices:
+                # Calculate the meter position relative to the center
+                x_meter = (x_idx - matrix_width / 2) * distance_per_index
+                # Invert y-axis by subtracting y_idx from matrix_height before calculation
+                y_meter = ((matrix_height - y_idx) - matrix_height / 2) * distance_per_index
+
+                # Convert meter offsets to geographic coordinates
+                x_geo, y_geo = center_x + x_meter, center_y + y_meter
+                concave_hull_geo.append((x_geo, y_geo))
+
+            # Create a polygon from the hull coordinates
+            hull_polygon = Polygon(concave_hull_geo)
+            # map polygon to coordinate reference system
+            gdf = gpd.GeoDataFrame(index=[0], crs=crs, geometry=[hull_polygon])
+            # save as GeoJSON
+            gdf.to_file(f'output/overlays/overlay_{lat}_{lng}_{color}.geojson', driver='GeoJSON')
+            print(f'Overlay saved to output/overlays/overlay_{lat}_{lng}_{color}.geojson')

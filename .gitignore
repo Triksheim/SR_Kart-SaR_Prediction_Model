@@ -1,0 +1,4 @@
+SAR_venv/
+test.py
+*.yml
+*__pycache__/
