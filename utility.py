@@ -40,7 +40,19 @@ def transform_coordinates_to_utm(lat, lng):
     return utm_x, utm_y
 
 
-def calculate_bbox(utm_x, utm_y, radius=1000):
+def transform_coords_crs(x, y, source_crs, target_crs):
+    new_crs = pyproj.CRS(target_crs)
+    old_crs = pyproj.CRS(source_crs)
+
+    # Create a transformer to convert between CRS
+    transformer = pyproj.Transformer.from_crs(old_crs, new_crs, always_xy=True)
+    
+    # Convert the point to the target CRS
+    new_coords = transformer.transform(x, y)
+    
+    return new_coords
+
+def calculate_bbox_utm(utm_x, utm_y, radius=1000):
     """
     Calculate a bounding box from a UTM coordinate with a specified radius.
     
@@ -250,34 +262,40 @@ def create_composite_image(images, output_path):
     print(f"Composite image saved to: {output_path}")
 
 
+def create_height_array(filepath, folder="output/array/"):
+    """
+    Create a NumPy array from a TIFF file containing height data.
 
-def reduce_resolution(data, factor=10, method="mean"):
-    if method == "mean":
-        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).mean(axis=1).mean(axis=2)
-    elif method == "max":
-        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).max(axis=1).max(axis=2)
-    elif method == "min":
-        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).mean(axis=1).min(axis=2)
+    Parameters:
+    filepath (str): The path to the TIFF file.
+    folder (str, optional): The folder to save the NumPy array. Default is "output/array/".
 
-
-
-def combine_matrixes(terrain, steepness, method="mean"):
-    if terrain.shape != steepness.shape:
-        print("Matrixes are not the same size")
-        return
-    
-    if method == "mean":
-        return (terrain + steepness) / 2
-    
-    elif method == "multiply":
-        return terrain * steepness
-    
-    elif method == "square":
-        return (terrain * steepness) ** 2
-        
-    
+    Returns:
+    None
+    """
+    height_dataset = exctract_data_from_tiff(tiff_path=filepath)
+    np.save(f'{folder}height_data.npy', height_dataset)
+    print(f'Height data np array saved to {folder}height_data.npy')
 
 
+
+def create_terrain_RGB_array(filepath, folder="output/array/"):
+    """
+    Create a RGB array from a terrain dataset stored in a TIFF file.
+
+    Args:
+        filepath (str): The path to the TIFF file.
+        folder (str, optional): The folder to save the RGB array. Defaults to "output/array/".
+
+    Returns:
+        None
+    """
+    terrain_dataset_R = exctract_data_from_tiff(tiff_path=filepath, band_n=1)
+    terrain_dataset_G = exctract_data_from_tiff(tiff_path=filepath, band_n=2)
+    terrain_dataset_B = exctract_data_from_tiff(tiff_path=filepath, band_n=3)
+    terrain_dataset = np.array([terrain_dataset_R, terrain_dataset_G, terrain_dataset_B])
+    np.save(f'{folder}terrain_RGB_data.npy', terrain_dataset)
+    print(f'Terrain RGB data np array saved to {folder}terrain_RGB_data.npy')
 
 
 
