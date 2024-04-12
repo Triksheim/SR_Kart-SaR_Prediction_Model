@@ -2,23 +2,106 @@ import numpy as np
 import math
 import random
 
-
+#############################################################
+""" For debugging branching simulation """
 cnt = 0
 cnt2 = 0
 cnt3 = 0
 cnt4 = 0
-
 def debug_stats_print():
     global cnt
     global cnt2
     global cnt3
     global cnt4
-
     print(f'{cnt} Steps')
     print(f'{cnt2} Branching, random')
     print(f'{cnt4} Branching, worse terrain')
     print(f'{cnt3} Direction change, obstacle')
+#############################################################
 
+
+def terrain_encoding(terrain_filename="terrain_RGB_data.npy", trail_gn_file="trail_data.npy", trail_osm_file="osm_trail_data.npy", folder="output/array/"):
+    """
+    Encodes the terrain data based on RGB values and saves the encoded terrain data as a numpy array.
+
+    Args:
+        terrain_filename (str): The filename of the terrain RGB data numpy array. Default is "terrain_RGB_data.npy".
+        trails_filename (str): The filename of the trail data numpy array. Default is "trail_data.npy".
+        folder (str): The folder path where the numpy arrays are located. Default is "output/array/".
+
+    Returns:
+        None
+    """
+    
+    try:
+        terrain_data = np.load(f'{folder}{terrain_filename}')
+    except:
+        print(f'No terrain data found in {folder}{terrain_filename}')
+        return
+    
+    # RGB values for terrain type
+    terrain_rgb_values = {
+        "Skog": (158, 204, 115),
+        "Åpen fastmark": (217, 217, 217),
+        "Hav": (204, 254, 254),
+        "Ferskvann": (145, 231, 255),
+        "Myr": (181, 236, 252),
+        "Bebygd": (252, 219, 214),
+        "Sti og vei": (179, 120, 76),
+        "Dyrket mark": (255, 247, 167)
+    }
+    terrain_encoding = {
+        "Ukjent":       1,
+        "Sti og vei":   1, 
+        "Åpen fastmark":0.8,
+        "Bebygd":       0.8,
+        "Dyrket mark":  0.6, 
+        "Skog":         0.6,
+        "Myr":          0.3,
+        "Ferskvann":    0.05,
+        "Hav":          0.01,   
+    }
+
+    # create a new 2d array with the terrain type encoding based on rgb values
+    terrain_type = np.zeros((terrain_data.shape[1], terrain_data.shape[2]), dtype=float)
+    print(f'Color analysis terrain encoding started...')
+    print(f'{terrain_data.shape[1]}x{terrain_data.shape[2]} pixels to process.')
+    for i in range(terrain_data.shape[1]):
+        for j in range(terrain_data.shape[2]):
+            pixel_rgb = tuple(terrain_data[:, i, j])
+            for terrain_name, rgb_value in terrain_rgb_values.items():
+                if pixel_rgb == rgb_value:
+                    # Use the reversed lookup to get the encoded integer
+                    terrain_type[i, j] = terrain_encoding[terrain_name]
+                    break
+
+            if terrain_type[i, j] == 0:
+                # check a if "Myr" is in a 3x3 area around the pixel
+                if terrain_encoding["Myr"] in terrain_type[i-1:i+2, j-1:j+2]:
+                    terrain_type[i, j] = terrain_encoding["Myr"]
+                else:
+                    terrain_type[i, j] = terrain_encoding["Åpen fastmark"]  # Unknown terrain type
+                
+        if i % (terrain_data.shape[1] / 100*5) == 0:
+            if i != 0:
+                print(f'{i/(terrain_data.shape[1]/100)}%')
+             
+
+    # add trails data to the terrain encoding. set 1 for trails
+    try:
+        trail_data_gn = np.load(f'{folder}{trail_gn_file}')
+        terrain_type[trail_data_gn == 1] = 1
+    except:
+        print(f'No trail data found in {folder}{trail_gn_file}')
+
+    try:
+        trail_data_osm = np.load(f'{folder}{trail_osm_file}')
+        terrain_type[trail_data_osm == 1] = 1
+    except:
+        print(f'No trail data found in {folder}{trail_osm_file}')
+
+    np.save(f'{folder}terrain_data_encoded.npy', terrain_type)
+    print(f'Encoded terrain data np array saved to {folder}terrain_data_encoded.npy')
 
 
 def calc_steepness(height_matrix):
@@ -28,6 +111,30 @@ def calc_steepness(height_matrix):
     steepness_matrix = np.sqrt(grad_x**2 + grad_y**2)
     return steepness_matrix
 
+
+def reduce_resolution(data, factor=10, method="mean"):
+    if method == "mean":
+        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).mean(axis=1).mean(axis=2)
+    elif method == "max":
+        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).max(axis=1).max(axis=2)
+    elif method == "min":
+        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).mean(axis=1).min(axis=2)
+
+
+
+def combine_matrixes(terrain, steepness, method="mean"):
+    if terrain.shape != steepness.shape:
+        print("Matrixes are not the same size")
+        return
+    
+    if method == "mean":
+        return (terrain + steepness) / 2
+    
+    elif method == "multiply":
+        return terrain * steepness
+    
+    elif method == "square":
+        return (terrain * steepness) ** 2
 
 
 
@@ -77,143 +184,15 @@ def calc_travel_distance(matrix, energy, center, end_x, end_y, step_limit=9999):
 
 
 
-# old
-def traverse(matrix, energy, start, target_direction, step_limit=1):
-    x0, y0 = start
-    radians = math.radians(target_direction)
-    
-    # Calculate end points based on the step limit and direction
-    dx = math.cos(radians) * step_limit
-    dy = math.sin(radians) * step_limit
-    # Theoretical end point considering no obstacles
-    x1, y1 = x0 + dx, y0 + dy
-
-    # Absolute values needed for Bresenham's algorithm
-    dx = abs(dx)
-    dy = abs(dy)
-    
-    # Determine the direction of steps (-1 for left/up, 1 for right/down)
-    sx = -1 if x0 > x1 else 1
-    sy = -1 if y0 > y1 else 1
-
-    x, y = x0, y0
-    energy_used = 0
-    steps_count = 0
-    err = dx - dy   # Error variable for Bresenham's line algorithm
-
-    # Start traversal
-    while True:
-        # Check bounds to ensure the current position is within matrix
-        if 0 <= x < matrix.shape[1] and 0 <= y < matrix.shape[0]:
-            # Remember previous position before potential move
-            prev_x, prev_y = x, y
-
-            # If energy is depleted, step back to last valid position
-            if energy_used > energy:
-                x -= sx
-                y -= sy
-                break
-        else:
-            # If out of bounds, step back to last valid position and deplete remaining energy
-            x -= sx
-            y -= sy
-            return (int(x), int(y)), 0
-            #break
-
-            
-
-        # Bresenham's algorithm for line drawing
-        e2 = 2 * err
-        if e2 >= -dy:
-            err -= dy
-            x += sx
-        if e2 <= dx:
-            err += dx
-            y += sy
-
-        try:
-            if matrix[int(y)][int(x)] <= 0:
-                #print("Obstacle detected at", (x, y))
-                return (int(x), int(y)), 0
-        except:
-            return (int(prev_x), int(prev_y)), 0
-        
-        
-        # Calculate energy cost based on the type of move and matrix values
-        if (prev_x != x) and (prev_y != y):
-            # Diagonal move, use √2 times the straight cost from the matrix
-            energy_cost_diagonal = math.sqrt(2) / matrix[int(y)][int(x)]
-            energy_used += energy_cost_diagonal
-        else:
-            # Straight move, cost is inverse of matrix value
-            energy_cost_straight = 1 / matrix[int(y)][int(x)]
-            energy_used += energy_cost_straight
-        
-        steps_count += 1
-
-        # If target is reached or steps exceed the limit, stop the traversal
-        if x == int(x1) and y == int(y1) or steps_count > step_limit:
-            break
-
-        
-        
-    energy_left = max(energy - energy_used, 0)
-    return (int(x), int(y)), energy_left
-
-
-
-
-
-# old
-def branching(matrix, x, y, angle, initial_energy, current_energy, sets):
-    green, yellow, red = sets   # refrenced sets from main function
-    if current_energy <= 0:
-        red.add((x, y)) # red coords
-        return
-
-    # movement
-    steps = 1   # steps to move 
-    (new_x, new_y), new_energy = traverse(matrix, current_energy, (x, y), angle, steps)
-
-    # save green and yellow coords if energy dips threshold
-    if current_energy > initial_energy*0.66:
-        if new_energy < initial_energy*0.66:
-            green.add((new_x, new_y))
-    elif current_energy > initial_energy*0.33:
-        if new_energy < initial_energy*0.33:
-            yellow.add((new_x, new_y))
-
-    if new_energy > 0:
-        # Branching conditions
-        try:
-            terrain_change = matrix[new_x, new_y] - matrix[x, y]
-        except:
-            terrain_change = 0
-        if terrain_change < -0.5 and (new_x, new_y) not in red:
-            for i in range(-2, 3, 1):
-                branch_angle = angle + i * 45  # Calculate the new direction
-                branch_angle %= 360  # Normalize angle
-                branching(matrix, new_x, new_y, branch_angle, initial_energy, new_energy, sets)
-        # Random branching
-        elif random.randint(1,100) <= 0:    
-            if (new_x, new_y) not in red and (new_x, new_y) not in yellow and (new_x, new_y) not in green:
-                for i in range(-5, 6, 1):
-                    branch_angle = angle + i * 10  # Calculate the new direction
-                    branch_angle %= 360  # Normalize angle
-                    branching(matrix, new_x, new_y, branch_angle, initial_energy, new_energy, sets)
-        else:
-            # Continue in the same direction
-            branching(matrix, new_x, new_y, angle, initial_energy, new_energy, sets)
-        
-    else:
-        # Energy depleted, stop recursion and save end point
-        red.add((new_x, new_y)) # red coords
 
 
     
     
 
 def movement(matrix, start_idx, move_dir):
+    """ Returns new position and energy cost for the movement.
+        Used in branching_movement.
+    """
     global cnt
     cnt += 1
     x0, y0 = start_idx
@@ -225,7 +204,7 @@ def movement(matrix, start_idx, move_dir):
     try:
         # obstacle, step back
         if matrix[y, x] <= 0:
-            return (x0, y0), 10
+            return (x0, y0), 2 / matrix[y0, x0]
             
         # diagonal
         if abs(sx) == abs(sy):
@@ -248,7 +227,7 @@ def movement(matrix, start_idx, move_dir):
 def branching_movement(matrix, current_idx, move_dir, initial_energy, current_energy, sets):
     global cnt, cnt2, cnt3, cnt4
     worse_terrain_threreshold = -0.25
-    random_branching_chance = 10    # n/100.000
+    random_branching_chance = 100    # n/100.000
 
 
     green, yellow, red, branches = sets   # refrenced sets from main function
