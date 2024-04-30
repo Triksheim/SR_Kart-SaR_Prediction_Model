@@ -6,6 +6,7 @@ from matplotlib.patches import Circle
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 
           
@@ -21,62 +22,70 @@ if __name__ == "__main__":
     plot = True
 
     # Set to collect data from GeoNorge and OSM
-    collect = True
+    collect = False
     plot_collect = False
 
     ## preprocessing functions start ##
-    run_all_pp = True   # Set to run all preprocessing functions or set individual functions below
+    run_all_pp = False   # Set to run all preprocessing functions or set individual functions below
 
     # Encode terrain type data to 0-1 values based on RGB values
     encode = run_all_pp or False
     plot_encoded = False
 
+    # Add trail data to terrain data
+    add_trails = run_all_pp or False
+
     # Reduce resolution of terrain and height data
-    reduced_resolution = run_all_pp or True
-    reduction_factor = 5                    # factor for reducing resolution
+    reduced_resolution = run_all_pp or False
+    reduction_factor = 5                   # factor for reducing resolution (in both x and y direction)
     
     # Calculate steepness of the terrain
-    calculate_steepness = run_all_pp or True
+    calculate_steepness = run_all_pp or False
     plot_steepness = False
     normalization_cap = 10                  # cap steepness value for normalization
 
     # Combine terrain and steepness matrixes and perform filtering
-    combine_matrix = run_all_pp or True
+    combine_matrix = run_all_pp or False
     plot_combined_matrix = False
     combination_method = "square"           # method for combining matrixes (mean, multiply, square)
-    filter_matrix = run_all_pp or True     # apply max filter to combined matrix
+    filter_matrix = run_all_pp or True   # apply max filter to combined matrix
     filter_size = 3                         # nxn filter size
     
     ## preprocessing functions end ##
 
 
     # Straight line simulation
-    straight_line_simulation = True
+    straight_line_simulation = False
     plot_straight_line = False
-    l_range_factor = 2.5                # factor for "max" travel distance
+    l_range_factor = 2                # factor for "max" travel distance
 
     # Branching simulation
     branching_simulation = True
     plot_branching = False
-    branching_sim_iterations = 16       # number of iterations for each direction (iter * 8)
+    scatter_endpoints = False           # scatter endpoints in plot
+    branching_sim_iterations = 1      # number of iterations for each direction (iter * 8)
     b_range_factor = 2                  # factor for "max" travel distance
-    hull_alpha = 25                     # "concavity" of the search area hull
-    scatter_endpoints = True            # scatter endpoints in plot
+    hull_alpha = 15                     # "concavity" of the search area hull
+    ring_25 = 20                        # percentage of max distance for 25% ring
+    ring_50 = 50                        # percentage of max distance for 50% ring
+    worse_terrain_threshold = 0.35       # threshold for branching when worse terrain (0-1)
+    random_branching_chance = 0         # chance of random branching (n/100.000)
 
     # Create map overlay layer with CRS from branching simulation results
     create_map_layer = True if branching_simulation else False
+    #create_map_layer = False
     
 
 
     # Map size, increase map_extention to get larger area by increasing number of squares in each direction
     square_radius = 500     # meter radius from center per map square, total 2*r x 2*r area
-    map_extention = 0       # square extension from centre by 2*map_extention*square_radius in each direction
+    map_extention = 2       # square extension from centre by 2*map_extention*square_radius in each direction
 
 
     # WGS84 coordinate for the center of the search area (last seen location of the missing person)
-    start_lat = 68.44333
-    start_lng = 17.52796
-
+    start_lat = 68.443336
+    start_lng = 17.527965
+    
     #67.31458155986105, 14.477247863863925  keiservarden
     #68.44333623319275, 17.52796511156201   pumpvannet
     #68.26615067072053, 14.537723823348557  nedre svolværvatnet, fra prototype
@@ -93,8 +102,8 @@ if __name__ == "__main__":
 
         if plot or plot_collect:
 
-            height_data = np.load(f'{arrays_folder}height_data.npy')
-            plot_array(height_data, cmap='terrain', label="moh", title="Høydedata")
+            height_matrix = np.load(f'{arrays_folder}height_data.npy')
+            plot_array(height_matrix, cmap='Greys', label="moh", title="Høydedata")
 
             try:
                 trail_data = np.load(f'{arrays_folder}gn_trail_data.npy')
@@ -113,60 +122,73 @@ if __name__ == "__main__":
 
 
     if encode:
-        terrain_file = "terrain_RGB_data.npy"
-        trail_gn_file = "gn_trail_data.npy"
-        trail_osm_file = "osm_trail_data.npy"
-        terrain_encoding(terrain_file, trail_gn_file, trail_osm_file, arrays_folder)
+        terrain_rgb_file = "terrain_RGB_data.npy"
+        
+        start_time = time.perf_counter()
+        terrain_encoding(terrain_rgb_file, arrays_folder)
+        end_time = time.perf_counter()
+        print(f"Encoding took {end_time - start_time} seconds")
 
         if plot or plot_encoded:
-            terrain_data = np.load(f'{arrays_folder}terrain_data_encoded.npy')
-            plot_array(terrain_data, cmap='terrain', label="Verdi(0-1)", title="Arealtype")
+            terrain_type_matrix = np.load(f'{arrays_folder}terrain_data_encoded.npy')
+            plot_array(terrain_type_matrix, cmap='terrain', label="Verdi(0-1)", title="Arealtype")
     
 
+    if add_trails:
+        terrain_type_matrix = np.load(f'{arrays_folder}terrain_data_encoded.npy')
+        trail_file_gn = 'gn_trail_data.npy'
+        trail_file_osm = 'osm_trail_data.npy'
+        trail_files = (trail_file_gn, trail_file_osm)
+        add_trails_data_to_terrain(terrain_type_matrix, trail_files, arrays_folder)
+
+        if plot:
+            plot_array(terrain_type_matrix, cmap='terrain', label="Verdi(0-1)", title="Arealtype med stier")
 
     if reduced_resolution:
-        terrain_data = np.load(f'{arrays_folder}terrain_data_encoded.npy')
-        terrain_data = reduce_resolution(terrain_data, reduction_factor, method="max")
+        terrain_type_matrix = np.load(f'{arrays_folder}terrain_with_trails.npy')
+        terrain_type_matrix = reduce_resolution(terrain_type_matrix, reduction_factor, method="mean")
+        terrain_type_matrix[0][0] = 1  # assure max range of 1 for easier visualization
+        plot_array(terrain_type_matrix, cmap='terrain', label="Verdi(0-1)", title="Arealtype nedskalert")
 
-        height_data = np.load(f'{arrays_folder}height_data.npy')
-        height_data = height_data[:-1,:-1]
-        height_data = reduce_resolution(height_data, reduction_factor, method="mean")
-
+        height_matrix = np.load(f'{arrays_folder}height_data.npy')
+        height_matrix = reduce_resolution(height_matrix, reduction_factor, method="mean")
+        #plot_array(height_matrix, cmap='Greys', label="moh", title="Høydedata nedskalert")
 
 
     if calculate_steepness:
         if not reduced_resolution:
-            height_data = np.load(f'{arrays_folder}height_data.npy')
-            height_data = height_data[:-1,:-1]
+            height_matrix = np.load(f'{arrays_folder}height_data.npy')
+            
+        steepness_matrix = calc_steepness(height_matrix)
+        steepness_matrix[steepness_matrix > normalization_cap] = normalization_cap        # cap steepness values
 
-        norm_steepness_map = calc_steepness(height_data)
-        norm_steepness_map[norm_steepness_map > normalization_cap] = normalization_cap  # cap steepness values
-
-        inv_norm_steepness_map = norm_steepness_map / np.max(norm_steepness_map)    # normalize values to 0-1
-        inv_norm_steepness_map = 1 - inv_norm_steepness_map     # invert values
-        inv_norm_steepness_map = inv_norm_steepness_map ** 2    # square values for better separation at extremes
+        norm_steepness_matrix = steepness_matrix / normalization_cap                      # normalize values to 0-1
+        inv_norm_steepness_matrix = 1 - norm_steepness_matrix                             # invert values
+        inv_norm_steepness_matrix = inv_norm_steepness_matrix ** 2                        # square values for better separation at extremes
         
+        #inv_norm_steepness_matrix[inv_norm_steepness_matrix < 0.1] = 0                    # set values below 0.1 to 0
+
         if plot or plot_steepness:
-            plot_array(norm_steepness_map, cmap='terrain', label="Gradering", title="Normalisert Stigning")
-            plot_array(inv_norm_steepness_map, cmap='terrain', label="Bratt  ->  Flatt", title="Invers normalisert stigning")
+            plot_array(steepness_matrix, cmap='terrain', label="Gradering (endring)", title="Stigning med maksverdi 10")
+            plot_array(inv_norm_steepness_matrix, cmap='terrain', label="Bratt  ->  Flatt", title="Normalisert stigning")
         
-        np.save(f'{arrays_folder}normalized_steepness_map.npy', inv_norm_steepness_map)
+        np.save(f'{arrays_folder}normalized_steepness_map.npy', inv_norm_steepness_matrix)
 
 
 
     if combine_matrix:
         if not reduced_resolution:
-            terrain_data = np.load(f'{arrays_folder}terrain_data_encoded.npy')
+            terrain_type_matrix = np.load(f'{arrays_folder}terrain_with_trails.npy')    # terrain type with trails
         if not calculate_steepness:
-            inv_norm_steepness_map = np.load(f'{arrays_folder}normalized_steepness_map.npy')
+            inv_norm_steepness_matrix = np.load(f'{arrays_folder}normalized_steepness_map.npy')
 
-        inv_norm_steepness_map[terrain_data == 1] = 1   # set steepness to 1 where there is a trail (ignore steepness)
-        inv_norm_steepness_map[inv_norm_steepness_map <= 0.1] = 0   # steepness values below 0.2 are set to 0
+        inv_norm_steepness_matrix[terrain_type_matrix == 1] = 1             # set steepness to 1 where there is a trail (ignore steepness)
+        inv_norm_steepness_matrix[inv_norm_steepness_matrix <= 0.1] = 0     # steepness values below 0.1 are set to 0
+        terrain_type_matrix[terrain_type_matrix <= 0.05] = 0                # set terrain values below 0.05 to 0
 
-        terrain_map = terrain_data
-        terrain_map[terrain_map <= 0.05] = 0    # set terrain values below 0.05 to 0
+        combined_matrix = combine_matrixes(terrain_type_matrix, inv_norm_steepness_matrix, combination_method)
 
-        combined_matrix = combine_matrixes(terrain_map, inv_norm_steepness_map, combination_method)
+        #combined_matrix[combined_matrix < 0.05] = 0
 
         if filter_matrix:
             combined_matrix = maximum_filter(combined_matrix, size=filter_size)
@@ -174,26 +196,17 @@ if __name__ == "__main__":
         if plot or plot_combined_matrix:
             plot_array(combined_matrix, cmap='terrain', label="Vanskelig  ->  Lett", title="Kombinert matrise, terreng score")
             
-        np.save(f'{arrays_folder}combined_matrix.npy', combined_matrix)
+        np.save(f'{arrays_folder}terrain_score_matrix.npy', combined_matrix)
 
 
 
     if straight_line_simulation:
-        if not reduced_resolution:
-            terrain_data = np.load(f'{arrays_folder}terrain_data_encoded.npy')
-            height_data = np.load(f'{arrays_folder}height_data.npy')
-            height_data = height_data[:-1,:-1]
-
-        if not calculate_steepness:
-            inv_norm_steepness_map = np.load(f'{arrays_folder}normalized_steepness_map.npy')
-
-        if not combine_matrix:
-            combined_matrix = np.load(f'{arrays_folder}combined_matrix.npy')
+        terrain_score_matrix = np.load(f'{arrays_folder}terrain_score_matrix.npy')
         
-        radius = combined_matrix.shape[0] / 2
+        radius = terrain_score_matrix.shape[0] / 2
         center = (int(radius), int(radius))
-        b_range_factor = 2.5
-        max_distance = radius * b_range_factor
+        max_distance = radius * l_range_factor
+        print(f"Max distance: {max_distance}")
        
         end_points_75 = []
         end_points_50 = []
@@ -208,7 +221,7 @@ if __name__ == "__main__":
                 end_x = int(center[0] + length * math.cos(radians))
                 end_y = int(center[1] + length * math.sin(radians))
 
-                end_point, _ = calc_travel_distance(combined_matrix, remaining_energy, center, end_x, end_y)
+                end_point, _ = calc_travel_distance(terrain_score_matrix, remaining_energy, center, end_x, end_y)
                 if n == 1:
                     end_points_75.append(end_point)
                 elif n == 2:
@@ -217,7 +230,7 @@ if __name__ == "__main__":
                     end_points_25.append(end_point)
 
         if plot or plot_straight_line:
-            plt.imshow(combined_matrix, cmap='terrain', interpolation='nearest')
+            plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
             circle = Circle((radius, radius), (radius-(radius/10)), color="blue", fill=False)
             plt.gca().add_patch(circle)
 
@@ -242,18 +255,10 @@ if __name__ == "__main__":
 
 
     if branching_simulation:
-        if not reduced_resolution:
-            terrain_data = np.load(f'{arrays_folder}terrain_data_encoded.npy')
-            height_data = np.load(f'{arrays_folder}height_data.npy')
-            height_data = height_data[:-1,:-1]
-
-        if not calculate_steepness:
-            inv_norm_steepness_map = np.load(f'{arrays_folder}normalized_steepness_map.npy')
-
-        if not combine_matrix:
-            combined_matrix = np.load(f'{arrays_folder}combined_matrix.npy')
         
-        radius = combined_matrix.shape[0] / 2
+        terrain_score_matrix = np.load(f'{arrays_folder}terrain_score_matrix.npy')
+        
+        radius = terrain_score_matrix.shape[0] / 2
         center = (int(radius), int(radius))
         max_distance = radius * b_range_factor
         max_energy = max_distance
@@ -262,9 +267,12 @@ if __name__ == "__main__":
         yellow_coords = set()
         red_coords = set()
         branches = set()
-        sets = (green_coords, yellow_coords, red_coords, branches)
+        last_cutoff = set()
+        sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
+
 
         print("Branching simulation started...")
+        start_time = time.perf_counter()
         for n in range(branching_sim_iterations):
             curr_dir = 1
             for i in range(-1, 2, 1):
@@ -274,10 +282,14 @@ if __name__ == "__main__":
                         print(f'Iteration {n+1}/{branching_sim_iterations}, Direction {curr_dir}/{8}')
                         curr_dir += 1
                         branches = set() # reset branches
-                        sets = (green_coords, yellow_coords, red_coords, branches)
-                        branching_movement(combined_matrix, (center[0], center[1]), move_direction, max_energy, max_energy, sets)
+                        sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
+                        branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_energy, max_energy, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance)
                         
+        end_time = time.perf_counter()
 
+
+        print(f'Params: {branching_sim_iterations} iter, {b_range_factor} b_range, {worse_terrain_threshold} terrain_thrshld, {random_branching_chance} random_chance')
+        print(f"Branching simulation took {end_time - start_time} seconds")
         print(f'Unique paths simulated: {len(red_coords)}')  # number of endpoints/paths
         debug_stats_print()
 
@@ -293,7 +305,7 @@ if __name__ == "__main__":
 
 
         if plot or plot_branching:
-            plt.imshow(combined_matrix, cmap='terrain', interpolation='nearest')
+            plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
             plt.colorbar(label="Terreng: Vaskelig  ->  Lett")
             circle = Circle((radius, radius), (radius-(radius/10)), color="blue", fill=False)   # search area circle
             plt.gca().add_patch(circle)
@@ -324,12 +336,12 @@ if __name__ == "__main__":
 
         start_coords = start_lat, start_lng  # matrix center
         map_diameter = ((map_extention * 2) + 1) * (square_radius * 2)  # Diameter of the map in meters
-        distance_per_index =  map_diameter / combined_matrix.shape[0]  # Meters per index in the matrix
+        distance_per_index =  map_diameter / terrain_score_matrix.shape[0]  # Meters per index in the matrix
 
         # create map overlays for red, yellow and green areas
-        create_polygon_map_overlay(combined_matrix, distance_per_index, start_coords, concave_hull_r, color="red")
-        create_polygon_map_overlay(combined_matrix, distance_per_index, start_coords, concave_hull_y, color="yellow")
-        create_polygon_map_overlay(combined_matrix, distance_per_index, start_coords, concave_hull_g, color="green")
+        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_r, color="red")
+        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_y, color="yellow")
+        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_g, color="green")
 
 
 

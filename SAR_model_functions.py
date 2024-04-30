@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import random
+from utility import normalize_component
 
 #############################################################
 """ For debugging branching simulation """
@@ -8,11 +9,13 @@ cnt = 0
 cnt2 = 0
 cnt3 = 0
 cnt4 = 0
+cnt_kill_1 = 0
+cnt_kill_2 = 0
+cnt_kill_3 = 0
 def debug_stats_print():
-    global cnt
-    global cnt2
-    global cnt3
-    global cnt4
+    global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
+    print(f'1:{cnt_kill_1},2:{cnt_kill_2},3:{cnt_kill_3}, Total:{cnt_kill_1+cnt_kill_2+cnt_kill_3} Killed branches')
+
     print(f'{cnt} Steps')
     print(f'{cnt2} Branching, random')
     print(f'{cnt4} Branching, worse terrain')
@@ -20,7 +23,7 @@ def debug_stats_print():
 #############################################################
 
 
-def terrain_encoding(terrain_filename="terrain_RGB_data.npy", trail_gn_file="trail_data.npy", trail_osm_file="osm_trail_data.npy", folder="output/array/"):
+def terrain_encoding(terrain_filename="terrain_RGB_data.npy", folder="output/array/"):
     """
     Encodes the terrain data based on RGB values and saves the encoded terrain data as a numpy array.
 
@@ -51,8 +54,8 @@ def terrain_encoding(terrain_filename="terrain_RGB_data.npy", trail_gn_file="tra
         "Dyrket mark": (255, 247, 167)
     }
     terrain_encoding = {
-        "Ukjent":       1,
-        "Sti og vei":   1, 
+        "Sti og vei":   1,
+        "Ukjent":       0.8,
         "Åpen fastmark":0.8,
         "Bebygd":       0.8,
         "Dyrket mark":  0.6, 
@@ -85,29 +88,52 @@ def terrain_encoding(terrain_filename="terrain_RGB_data.npy", trail_gn_file="tra
         if i % (terrain_data.shape[1] / 100*5) == 0:
             if i != 0:
                 print(f'{i/(terrain_data.shape[1]/100)}%')
-             
 
-    # add trails data to the terrain encoding. set 1 for trails
-    try:
-        trail_data_gn = np.load(f'{folder}{trail_gn_file}')
-        terrain_type[trail_data_gn == 1] = 1
-    except:
-        print(f'No trail data found in {folder}{trail_gn_file}')
 
-    try:
-        trail_data_osm = np.load(f'{folder}{trail_osm_file}')
-        terrain_type[trail_data_osm == 1] = 1
-    except:
-        print(f'No trail data found in {folder}{trail_osm_file}')
-
+    terrain_type[0][0] = 1 # To assure that the min value is atleast 1 for better visual when plotting 
     np.save(f'{folder}terrain_data_encoded.npy', terrain_type)
     print(f'Encoded terrain data np array saved to {folder}terrain_data_encoded.npy')
 
+def add_trails_data_to_terrain(terrain_data, trail_files=[],folder="output/array/", trail_value=1):
+        trails_added = False
+        for trail_file in trail_files:
+            try:
+                trails = np.load(f'{folder}{trail_file}')
+                terrain_data[trails == 1] = trail_value
+                trails_added = True
+            except:
+                print(f'No trail data found in {folder}{trail_file}')
+        
+        if trails_added:
+            terrain_data = set_neighbours(terrain_data, value=trail_value)
+            np.save(f'{folder}terrain_with_trails.npy', terrain_data)
+            print(f'Trails added to terrain data and saved to {folder}terrain_with_trails.npy')
+        else:
+            print(f'No trail data added to terrain data.')
+            np.save(f'{folder}terrain_with_trails.npy', terrain_data)
+
+
+
+
+def set_neighbours(matrix, value=1, steps=8):
+    for _ in range(steps):
+        rows, cols = np.where(matrix == value)
+        neighbour_offset = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+        for row, col in zip(rows, cols):
+            for offset in neighbour_offset:
+                new_row = row + offset[0]
+                new_col = col + offset[1]
+                try:
+                    matrix[new_row, new_col] = value
+                except:
+                    pass
+    return matrix
+    
 
 def calc_steepness(height_matrix):
-    # Calculate gradients along both axes
+    # gradients along both axes
     grad_x, grad_y = np.gradient(height_matrix)
-    # Calculate the steepness for each square
+    # steepness for each square (pythagorean)
     steepness_matrix = np.sqrt(grad_x**2 + grad_y**2)
     return steepness_matrix
 
@@ -126,15 +152,14 @@ def combine_matrixes(terrain, steepness, method="mean"):
     if terrain.shape != steepness.shape:
         print("Matrixes are not the same size")
         return
-    
     if method == "mean":
         return (terrain + steepness) / 2
-    
     elif method == "multiply":
         return terrain * steepness
-    
     elif method == "square":
         return (terrain * steepness) ** 2
+    elif method == "cube":
+        return (terrain * steepness) ** 3
 
 
 
@@ -205,6 +230,10 @@ def movement(matrix, start_idx, move_dir):
         # obstacle, step back
         if matrix[y, x] <= 0:
             return (x0, y0), 2 / matrix[y0, x0]
+        
+        # out of bounds in negative direction, step back and end
+        if x < 0 or y < 0:
+            return (x0, y0), float('inf')
             
         # diagonal
         if abs(sx) == abs(sy):
@@ -224,13 +253,12 @@ def movement(matrix, start_idx, move_dir):
     
     return (x, y), energy_cost
 
-def branching_movement(matrix, current_idx, move_dir, initial_energy, current_energy, sets):
-    global cnt, cnt2, cnt3, cnt4
-    worse_terrain_threreshold = -0.25
-    random_branching_chance = 100    # n/100.000
 
 
-    green, yellow, red, branches = sets   # refrenced sets from main function
+def branching_movement(matrix, current_idx, move_dir, initial_energy, current_energy, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance):
+    global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
+    
+    green, yellow, red, branches, last_cutoff = sets   # refrenced sets from main function
     x, y = current_idx
     if current_energy <= 0:
         red.add(current_idx) # red coords
@@ -241,12 +269,46 @@ def branching_movement(matrix, current_idx, move_dir, initial_energy, current_en
     energy_left = current_energy - movement_cost
 
     # save green and yellow coords if energy dips threshold
-    if current_energy > initial_energy*0.66:
-        if energy_left < initial_energy*0.66:
+    if current_energy > initial_energy*(100-ring_25)/100:
+        if energy_left < initial_energy*(100-ring_25)/100:
             green.add((new_x, new_y))
-    elif current_energy > initial_energy*0.33:
-        if energy_left < initial_energy*0.33:
-            yellow.add((new_x, new_y))
+    elif current_energy > initial_energy*(100-ring_50)/100:
+        if energy_left < initial_energy*(100-ring_50)/100:
+            if (new_x, new_y) in green:
+                cnt_kill_1 += 1
+                return
+            else:
+                yellow.add((new_x, new_y))
+
+
+    elif current_energy > initial_energy*((100-ring_50)/2)/100:
+        #print("Start of last cutoff")
+        if energy_left < initial_energy*((100-ring_50)/2)/100:
+            if (new_x, new_y) in green or (new_x, new_y) in yellow:
+                #print(f'Killing branch: {new_x, new_y}')
+                cnt_kill_2 += 1
+                return
+            else:
+                #print(f'Adding to last cutoff: {new_x, new_y}')
+                last_cutoff.add((new_x, new_y))
+
+
+    
+    # branches kill offs
+    if current_energy < initial_energy*(100-((ring_50+ring_25)/2))/100:
+        if (new_x, new_y) in green:
+            cnt_kill_1 += 1
+            return
+
+    if current_energy < initial_energy*(100-ring_50)/100:
+        if (new_x, new_y) in yellow:
+            cnt_kill_2 += 1
+            return
+
+    if current_energy < initial_energy*((100-ring_50)/2)/100:
+        if (new_x, new_y) in last_cutoff:
+            cnt_kill_3 += 1
+            return
 
 
     if energy_left > 0:
@@ -257,49 +319,24 @@ def branching_movement(matrix, current_idx, move_dir, initial_energy, current_en
             terrain_change = 10  # prob out of bounds
 
         # Branching if terrain change is significant worse
-        if terrain_change < worse_terrain_threreshold and (new_x, new_y) not in branches:
+        if terrain_change < -worse_terrain_threshold and (new_x, new_y) not in branches:
             cnt4 += 1
-
-            sx, sy = move_dir   # current direction
-
             # continue in the same direction
-            branching_movement(matrix, (new_x, new_y), move_dir, initial_energy, energy_left, sets)
-
-
-            # Checks currents direction to avoid going in the opposite direction
+            branching_movement(matrix, (new_x, new_y), move_dir, initial_energy, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance)
+            
+            sx, sy = move_dir   # current direction
             # Branches in 4 directions. diagonals in same direction and sideways.
-            if abs(sx) == 1 and abs(sy) == 0:
-                for i in range (0, 2, 1):
-                    for j in range(-1, 2, 2):
-                        new_dir = (i*sx, j)
-                        branches.add((new_x+new_dir[0], new_y+new_dir[1]))
-                        branching_movement(matrix, (new_x, new_y), new_dir, initial_energy, energy_left, sets)
+            new_directions = [
+                (sy,-sx),   # right
+                (-sy,sx),   # left
+                (normalize_component(sx+sy),normalize_component(sy-sx)), # right diagonal
+                (normalize_component(sx-sy),normalize_component(sy+sx))] # left diagonal
 
-            elif abs(sx) == 0 and abs(sy) == 1:
-                for i in range(-1, 2, 2):
-                    for j in range(0, 2, 1):
-                        new_dir = (i, j*sy)
-                        branches.add((new_x+new_dir[0], new_y+new_dir[1]))
-                        branching_movement(matrix, (new_x, new_y), new_dir, initial_energy, energy_left, sets)
+            for new_dir in new_directions:
+                branches.add((new_x+new_dir[0], new_y+new_dir[1]))
+                branching_movement(matrix, (new_x, new_y), new_dir, initial_energy, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance)
 
-            elif abs(sx) == 1 and abs(sy) == 1:
-                    new_dir = (0, sy)
-                    branches.add((new_x+new_dir[0], new_y+new_dir[1]))
-                    branching_movement(matrix, (new_x, new_y), new_dir, initial_energy, energy_left, sets)
-
-                    new_dir = (sx, 0)
-                    branches.add((new_x+new_dir[0], new_y+new_dir[1]))
-                    branching_movement(matrix, (new_x, new_y), new_dir, initial_energy, energy_left, sets)
-
-                    new_dir = (-sx, sy)
-                    branches.add((new_x+new_dir[0], new_y+new_dir[1]))
-                    branching_movement(matrix, (new_x, new_y), new_dir, initial_energy, energy_left, sets)
-
-                    new_dir = (sx, -sy)
-                    branches.add((new_x+new_dir[0], new_y+new_dir[1]))
-                    branching_movement(matrix, (new_x, new_y), new_dir, initial_energy, energy_left, sets)
-
-
+            
 
         # Random branching. Branches in all 8 directions
         elif random.randint(1,10000) <= random_branching_chance and (new_x, new_y) not in branches:
@@ -309,21 +346,22 @@ def branching_movement(matrix, current_idx, move_dir, initial_energy, current_en
                     new_dir = (i, j)
                     if new_dir != (0, 0):
                         branches.add((new_x+new_dir[0], new_y+new_dir[1]))
-                        branching_movement(matrix, (new_x, new_y), new_dir, initial_energy, energy_left, sets)
+                        branching_movement(matrix, (new_x, new_y), new_dir, initial_energy, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance)
         
-
-        # Stuck in the same position. Randomly choose a new direction
+        # Change direction if obstacle, randomly choose right or left
         elif (x, y) == (new_x, new_y) and (new_x, new_y) not in branches:
-            new_dir = move_dir
-            while new_dir == move_dir and new_dir != (0, 0):
-                new_dir = (random.randint(-1, 1), random.randint(-1, 1))
             cnt3 += 1
-            branching_movement(matrix, (new_x, new_y), new_dir, initial_energy, energy_left, sets)
+            if random.randint(0,1) == 1:
+                new_dir = (move_dir[1], -move_dir[0]) # right
+            else:
+                new_dir = (-move_dir[1], move_dir[0])  # left
+            branching_movement(matrix, (new_x, new_y), new_dir, initial_energy, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance)
 
+        
 
         # Continue in the same direction 
         else:               
-            branching_movement(matrix, (new_x, new_y), move_dir, initial_energy, energy_left, sets)
+            branching_movement(matrix, (new_x, new_y), move_dir, initial_energy, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance)
         
     else:
         # Energy depleted, stop recursion and save end point

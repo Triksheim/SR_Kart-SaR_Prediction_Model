@@ -274,7 +274,7 @@ def create_height_array(filepath, folder="output/array/"):
     None
     """
     height_dataset = exctract_data_from_tiff(tiff_path=filepath)
-    np.save(f'{folder}height_data.npy', height_dataset)
+    np.save(f'{folder}height_data.npy', height_dataset[:-1,:-1])
     print(f'Height data np array saved to {folder}height_data.npy')
 
 
@@ -408,3 +408,10 @@ def create_polygon_map_overlay(matrix, dist, coords, hull, color="red", crs="EPS
             # save as GeoJSON
             gdf.to_file(f'output/overlays/overlay_{lat}_{lng}_{color}.geojson', driver='GeoJSON')
             print(f'Overlay saved to output/overlays/overlay_{lat}_{lng}_{color}.geojson')
+
+def normalize_component(c):
+    if c > 0:
+        return 1
+    elif c < 0:
+        return -1
+    return 0
