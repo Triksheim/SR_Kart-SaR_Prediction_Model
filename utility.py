@@ -122,6 +122,92 @@ def latlng_to_utm_bbox(lat, lng, radius):
     
     return (min_x, min_y, max_x, max_y)
 
+def extract_tiff_from_multipart_response111(response, output_path="", save_to_file=False):
+    from email import message_from_bytes
+
+    if response.status_code == 200:
+        # Check the Content-Type to ensure it's a multipart response
+        content_type = response.headers['Content-Type']
+        if 'multipart' in content_type:
+            # Parse the MIME message
+            msg = message_from_bytes(response.content)
+
+            # Iterate over the parts
+            for part in msg.walk():
+                ctype = part.get_content_type()
+                cdisp = part.get('Content-Disposition', '')
+                cid = part.get('Content-ID', '')
+
+                if ctype == 'text/xml' or cid == 'wcs.xml':  # handle XML part
+                    xml_data = part.get_payload(decode=True)
+                    print("XML Part:", xml_data.decode('utf-8'))
+                elif ctype == 'image/tiff' or cid == 'coverage/wcs.tif':  # handle TIFF part
+                    tiff_data = part.get_payload(decode=True)
+                    if save_to_file:
+                        tiff_file_path = f"{output_path}output.tif"
+                        with open(tiff_file_path, "wb") as f:
+                            f.write(tiff_data)
+                        print(f"TIFF Part saved to {tiff_file_path}")
+                else:
+                    # Save unrecognized binary data for analysis
+                    print("Unrecognized binary content encountered.")
+                    binary_data = part.get_payload(decode=True)
+                    unknown_content_path = f"output/height_test/unknown_binary_content.bin"
+                    with open(unknown_content_path, "wb") as f:
+                        f.write(binary_data)
+                    print(f"Saved unknown binary content to {unknown_content_path} for analysis.")
+        else:
+            print("Received non-multipart response")
+    else:
+        print("Failed to fetch data:", response.status_code)
+
+
+
+def extract_tiff_from_multipart_response222(response, output_path="", save_to_file=False):
+    from email import message_from_bytes
+    from email.parser import BytesParser
+
+    if response.status_code == 200:
+        # Check the Content-Type to ensure it's a multipart response
+        content_type = response.headers['Content-Type']
+        if 'multipart' in content_type:
+            # Parse the MIME message
+            msg = message_from_bytes(response.content)
+
+            # Iterate over the parts
+            for part in msg.walk():
+                ctype = part.get_content_type()
+                cdisp = part.get('Content-Disposition', '')
+                
+                if ctype == 'text/xml':  # handle XML part
+                    xml_data = part.get_payload(decode=True)
+                    print("XML Part:", xml_data.decode())
+                elif ctype == 'image/tiff' and 'attachment' in cdisp:  # handle TIFF part
+                    tiff_data = part.get_payload(decode=True)
+                    print("TIFF Part found")
+                elif ctype == 'text/plain':  # handle plain text part
+                    try:
+                        text_data = part.get_payload(decode=True)
+                        #print("Plain text part content:", text_data.decode('utf-8'))
+                        txt = text_data.decode('utf-8')
+                        print("was utf-8")
+                    except UnicodeDecodeError:
+                        try:
+                            # Try decoding with a different encoding
+                            #print("Plain text part content:", text_data.decode('ISO-8859-1'))
+                            txt = text_data.decode('ISO-8859-1')
+                            print(txt)
+                            print("was ISO-8859-1")
+                        except Exception as e:
+                            print("Failed to decode text data:", str(e))
+                else:
+                    print("Unknown part:", ctype)
+        else:
+            print("Received non-multipart response")
+    else:
+        print("Failed to fetch data:", response.status_code)
+
+
 
 def extract_tiff_from_multipart_response(response, output_path="", save_to_file=False):
     """
@@ -132,7 +218,7 @@ def extract_tiff_from_multipart_response(response, output_path="", save_to_file=
     - output_path (str): The path to save the GeoTIFF file.
     - save_to_file (bool): Whether to save the GeoTIFF to a file or not. Returns the tiff_data when False.
     """
-    print(len(response.content))
+    #print(f'{len(response.content)} bytes received.')
     boundary = b'--wcs'
     start_of_tiff_part = response.content.find(boundary + b'\nContent-Type: image/tiff')
 
@@ -140,6 +226,7 @@ def extract_tiff_from_multipart_response(response, output_path="", save_to_file=
         start_of_data = response.content.find(b'\n\n', start_of_tiff_part) + 2  # Assuming double newline marks end of headers
         end_of_tiff_part = response.content.find(boundary, start_of_data)
         tiff_data = response.content[start_of_data:end_of_tiff_part].strip()
+        #print("TIFF part found:", len(tiff_data))
         
         if save_to_file:
             # Save the TIFF data to a file
@@ -406,8 +493,8 @@ def create_polygon_map_overlay(matrix, dist, coords, hull, color="red", crs="EPS
             # map polygon to coordinate reference system
             gdf = gpd.GeoDataFrame(index=[0], crs=crs, geometry=[hull_polygon])
             # save as GeoJSON
-            gdf.to_file(f'output/overlays/overlay_{lat}_{lng}_{color}.geojson', driver='GeoJSON')
-            print(f'Overlay saved to output/overlays/overlay_{lat}_{lng}_{color}.geojson')
+            gdf.to_file(f'output/overlays/overlay_{color}_{lat}_{lng}_EPSG{crs[5:]}.geojson', driver='GeoJSON')
+            print(f'Overlay saved to output/overlays/overlay_{color}_{lat}_{lng}_EPSG{crs[5:]}.geojson')
 
 def normalize_component(c):
     if c > 0:

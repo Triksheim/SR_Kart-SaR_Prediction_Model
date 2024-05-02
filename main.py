@@ -13,6 +13,7 @@ import time
 
 
 if __name__ == "__main__":
+    start_time_main = time.perf_counter()
     ################### S A R - M O D E L - S E T T I N G S ###################
     
     output_folder = "output/"
@@ -25,18 +26,42 @@ if __name__ == "__main__":
     collect = False
     plot_collect = False
 
-    ## preprocessing functions start ##
+    ## preprocessing functions start ## -----------------------------------------------------------
+
     run_all_pp = False   # Set to run all preprocessing functions or set individual functions below
 
     # Encode terrain type data to 0-1 values based on RGB values
     encode = run_all_pp or False
     plot_encoded = False
+    terrain_type_encoding = {    # Encoded values for terrain type score
+        "Sti og vei":   1,
+        "Ukjent":       0.8,
+        "Åpen fastmark":0.8,
+        "Bebygd":       0.8,
+        "Dyrket mark":  0.6, 
+        "Skog":         0.6,
+        "Myr":          0.3,
+        "Ferskvann":    0.05,
+        "Hav":          0.01,   
+    }
+    terrain_rgb_values = {  # RGB values for terrain types (from GeoNorge data)
+        "Skog": (158, 204, 115),
+        "Åpen fastmark": (217, 217, 217),
+        "Hav": (204, 254, 254),
+        "Ferskvann": (145, 231, 255),
+        "Myr": (181, 236, 252),
+        "Bebygd": (252, 219, 214),
+        "Sti og vei": (179, 120, 76),
+        "Dyrket mark": (255, 247, 167)
+    }
+    
 
     # Add trail data to terrain data
     add_trails = run_all_pp or False
 
     # Reduce resolution of terrain and height data
     reduced_resolution = run_all_pp or False
+    plot_reduced_resolution = False
     reduction_factor = 5                   # factor for reducing resolution (in both x and y direction)
     
     # Calculate steepness of the terrain
@@ -51,7 +76,7 @@ if __name__ == "__main__":
     filter_matrix = run_all_pp or True   # apply max filter to combined matrix
     filter_size = 3                         # nxn filter size
     
-    ## preprocessing functions end ##
+    ## preprocessing functions end ## -----------------------------------------------------------
 
 
     # Straight line simulation
@@ -63,13 +88,13 @@ if __name__ == "__main__":
     branching_simulation = True
     plot_branching = False
     scatter_endpoints = False           # scatter endpoints in plot
-    branching_sim_iterations = 1      # number of iterations for each direction (iter * 8)
+    branching_sim_iterations = 2      # number of iterations for each direction (iter * 8)
     b_range_factor = 2                  # factor for "max" travel distance
     hull_alpha = 15                     # "concavity" of the search area hull
     ring_25 = 20                        # percentage of max distance for 25% ring
     ring_50 = 50                        # percentage of max distance for 50% ring
     worse_terrain_threshold = 0.35       # threshold for branching when worse terrain (0-1)
-    random_branching_chance = 0         # chance of random branching (n/100.000)
+    random_branching_chance = 10         # chance of random branching (n/100.000)
 
     # Create map overlay layer with CRS from branching simulation results
     create_map_layer = True if branching_simulation else False
@@ -83,8 +108,8 @@ if __name__ == "__main__":
 
 
     # WGS84 coordinate for the center of the search area (last seen location of the missing person)
-    start_lat = 68.443336
-    start_lng = 17.527965
+    start_lat = 68.266150
+    start_lng = 14.537723
     
     #67.31458155986105, 14.477247863863925  keiservarden
     #68.44333623319275, 17.52796511156201   pumpvannet
@@ -98,7 +123,11 @@ if __name__ == "__main__":
    
 
     if collect:
+        print("Data collection started...")
+        start_time_collect = time.perf_counter()
         get_all_geo_data(start_lat, start_lng, square_radius, map_extention, output_folder)
+        end_time_collect = time.perf_counter()
+        print(f"Collecting data took {end_time_collect - start_time_collect} seconds")
 
         if plot or plot_collect:
 
@@ -107,17 +136,18 @@ if __name__ == "__main__":
 
             try:
                 trail_data = np.load(f'{arrays_folder}gn_trail_data.npy')
-                print(trail_data.shape)
+                #print(trail_data.shape)
                 plot_array(trail_data, cmap='terrain', title="Stier GeoNorge")
             except FileNotFoundError:
                 print("No GeoNorge trail data found")
 
             try:
                 trail_data = np.load(f'{arrays_folder}osm_trail_data.npy')
-                print(trail_data.shape)
+                #print(trail_data.shape)
                 plot_array(trail_data, cmap='terrain', title="Stier OSM")
             except FileNotFoundError:
                 print("No OSM trail data found")
+
 
 
 
@@ -125,7 +155,7 @@ if __name__ == "__main__":
         terrain_rgb_file = "terrain_RGB_data.npy"
         
         start_time = time.perf_counter()
-        terrain_encoding(terrain_rgb_file, arrays_folder)
+        terrain_encoding(terrain_type_encoding, terrain_rgb_values, terrain_rgb_file, arrays_folder)
         end_time = time.perf_counter()
         print(f"Encoding took {end_time - start_time} seconds")
 
@@ -145,14 +175,16 @@ if __name__ == "__main__":
             plot_array(terrain_type_matrix, cmap='terrain', label="Verdi(0-1)", title="Arealtype med stier")
 
     if reduced_resolution:
-        terrain_type_matrix = np.load(f'{arrays_folder}terrain_with_trails.npy')
+        terrain_type_matrix = np.load(f'{arrays_folder}terrain_with_trails_matrix.npy')
         terrain_type_matrix = reduce_resolution(terrain_type_matrix, reduction_factor, method="mean")
-        terrain_type_matrix[0][0] = 1  # assure max range of 1 for easier visualization
-        plot_array(terrain_type_matrix, cmap='terrain', label="Verdi(0-1)", title="Arealtype nedskalert")
+        terrain_type_matrix[0][0] = 1  # assure max range of 1 for better visualization in plots
 
         height_matrix = np.load(f'{arrays_folder}height_data.npy')
         height_matrix = reduce_resolution(height_matrix, reduction_factor, method="mean")
-        #plot_array(height_matrix, cmap='Greys', label="moh", title="Høydedata nedskalert")
+
+        if plot_reduced_resolution:
+            plot_array(terrain_type_matrix, cmap='terrain', label="Verdi(0-1)", title="Arealtype nedskalert")
+            plot_array(height_matrix, cmap='Greys', label="moh", title="Høydedata nedskalert")
 
 
     if calculate_steepness:
@@ -172,15 +204,17 @@ if __name__ == "__main__":
             plot_array(steepness_matrix, cmap='terrain', label="Gradering (endring)", title="Stigning med maksverdi 10")
             plot_array(inv_norm_steepness_matrix, cmap='terrain', label="Bratt  ->  Flatt", title="Normalisert stigning")
         
-        np.save(f'{arrays_folder}normalized_steepness_map.npy', inv_norm_steepness_matrix)
+        # print steepnes matrix saved to
+        print(f"Steepness matrix saved to: {arrays_folder}normalized_steepness_matrix.npy")
+        np.save(f'{arrays_folder}normalized_steepness_matrix.npy', inv_norm_steepness_matrix)
 
 
 
     if combine_matrix:
         if not reduced_resolution:
-            terrain_type_matrix = np.load(f'{arrays_folder}terrain_with_trails.npy')    # terrain type with trails
+            terrain_type_matrix = np.load(f'{arrays_folder}terrain_with_trails_matrix.npy')    # terrain type with trails
         if not calculate_steepness:
-            inv_norm_steepness_matrix = np.load(f'{arrays_folder}normalized_steepness_map.npy')
+            inv_norm_steepness_matrix = np.load(f'{arrays_folder}normalized_steepness_matrix.npy')
 
         inv_norm_steepness_matrix[terrain_type_matrix == 1] = 1             # set steepness to 1 where there is a trail (ignore steepness)
         inv_norm_steepness_matrix[inv_norm_steepness_matrix <= 0.1] = 0     # steepness values below 0.1 are set to 0
@@ -195,7 +229,8 @@ if __name__ == "__main__":
 
         if plot or plot_combined_matrix:
             plot_array(combined_matrix, cmap='terrain', label="Vanskelig  ->  Lett", title="Kombinert matrise, terreng score")
-            
+
+        print(f"Combined terrain score matrix saved to: {arrays_folder}terrain_score_matrix.npy")
         np.save(f'{arrays_folder}terrain_score_matrix.npy', combined_matrix)
 
 
@@ -298,6 +333,7 @@ if __name__ == "__main__":
         yellow_points = np.array(list(yellow_coords))
         green_points = np.array(list(green_coords))
 
+        print(f'Calculating polygons based on simulation results...')
         # compute concave hulls
         concave_hull_r = compute_concave_hull_from_points(red_points, hull_alpha)
         concave_hull_y = compute_concave_hull_from_points(yellow_points, hull_alpha)
@@ -333,19 +369,22 @@ if __name__ == "__main__":
 
 
     if create_map_layer:
-
         start_coords = start_lat, start_lng  # matrix center
         map_diameter = ((map_extention * 2) + 1) * (square_radius * 2)  # Diameter of the map in meters
         distance_per_index =  map_diameter / terrain_score_matrix.shape[0]  # Meters per index in the matrix
 
         # create map overlays for red, yellow and green areas
-        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_r, color="red")
-        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_y, color="yellow")
-        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_g, color="green")
+        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_r, color="red", crs="EPSG:25833")
+        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_y, color="yellow", crs="EPSG:25833")
+        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_g, color="green", crs="EPSG:25833")
+
+        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_r, color="red", crs="EPSG:4326")
+        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_y, color="yellow", crs="EPSG:4326")
+        create_polygon_map_overlay(terrain_score_matrix, distance_per_index, start_coords, concave_hull_g, color="green", crs="EPSG:4326")
 
 
-
-
+    end_time_main = time.perf_counter()
+    print(f"Main took {end_time_main - start_time_main} seconds")
 
         
 

@@ -37,7 +37,7 @@ def get_all_geo_data(lat, lng, square_radius=1000, map_extention=0, folder="outp
         for x in range(-map_extention, map_extention+1, 1):
             map_squares_center_point.append((center_x + (2*x*square_radius), center_y + (2*y*square_radius)))
 
-     
+    
 
     # get the terrain type map (saves tiff file)
     get_terrain_type_map(map_squares_center_point, start_point, square_radius, folder)
@@ -55,9 +55,15 @@ def get_all_geo_data(lat, lng, square_radius=1000, map_extention=0, folder="outp
     # convert terrain tiff to 3d numpy array with RGB values and save to file
     create_terrain_RGB_array(f'{folder}{start_point[0]}_{start_point[1]}_terrain_composite.tif')
 
+    # TESTING
+    # # get the height map    (saves tiff file)
+    # get_height_map_geonorge(map_squares_center_point, start_point, square_radius, folder)
+    # # convert height tiff to numpy array and save to file
+    # create_height_array(f'{folder}{start_point[0]}_{start_point[1]}_height_composite.tif')
 
 
-def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=1000, folder="output/"):
+
+def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=500, folder="output/"):
     """
     Retrieves height map data from a web service for a given set of map squares and saves a composite tiff to file.
 
@@ -84,11 +90,13 @@ def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=1
 
     tiff_data = []
     futures = []
+    min_size_expected = 4*(2*square_radius**2)
+    print(f'Minimum size expected: {min_size_expected} bytes')
 
     with ThreadPoolExecutor() as executor:
         print(f'Request to WCS: {url}')
-        for coords in center_of_map_squares:
-            time.sleep(5)
+        #for n, coords in reversed(list(enumerate(center_of_map_squares))):
+        for n, coords in enumerate(center_of_map_squares):  
             bbox_coords = calculate_bbox_utm(coords[0], coords[1], square_radius)
             bbox = create_bbox_string(*bbox_coords)
 
@@ -101,16 +109,36 @@ def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=1
                 "boundingbox": bbox,
             }
 
+            
+
             # Submit task to the executor
-            future = executor.submit(wcs_request, url, params)
+            future = executor.submit(wcs_request, url, params, min_size_limit=min_size_expected, n=n)
             futures.append(future)
+            print(f'Request {n+1} submitted. Waiting for response...')
+            time.sleep(2)
 
         # Wait for all futures to complete
         for n, future in enumerate(as_completed(futures)):
             response = future.result()
             if response:
                 tiff_data.append(extract_tiff_from_multipart_response(response))
-                print(f"{n+1}/{len(center_of_map_squares)}")
+
+                #print(f"{n+1}/{len(center_of_map_squares)}")
+
+                # # DEBUGGING
+                # filename = f'{n}.tif'
+                # filepath = f'{folder}/height_test/{filename}'
+                # data = [response.content]
+                # create_composite_tiff(data, filepath)
+
+                
+                # filename = f'{n}.txt'
+                # filepath = f'{folder}/height_test/{filename}'
+                # with open(filepath, 'wb') as f:
+                #     f.write(response.content)
+
+
+                
 
     # combine a composite tiff from all tiff data and save to file
     filename = f'{start_coords[0]}_{start_coords[1]}_height_composite.tif' 
@@ -118,7 +146,7 @@ def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=1
 
 
 
-def wcs_request(url, params, retry_count=10):
+def wcs_request(url, params, retry_limit=15, min_size_limit=100000, n=0):
     """
     Make a request to a Web Coverage Service (WCS) and return the response.
         params = {
@@ -142,8 +170,8 @@ def wcs_request(url, params, retry_count=10):
         }
         url = "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
     """
-
-    while retry_count > 0:
+    retry_count = 0
+    while retry_limit > retry_count:
         # Make the request
         response = requests.get(url, params=params)
 
@@ -151,18 +179,34 @@ def wcs_request(url, params, retry_count=10):
         if response.status_code == 200:
             content_type = response.headers.get('Content-Type')
             if 'multipart' in content_type: # Check if the response is multipart xml
-                if len(response.content) > 100000:
+                
+                
+                if len(response.content) < min_size_limit and retry_count < 5:
+                    print(f'Error Request {n+1}: Insufficient data. {len(response.content)}/{min_size_limit} bytes')
+                elif len(response.content) < min_size_limit/2 and retry_count < 10:
+                    print(f'Error Request {n+1}: Insufficient data. {len(response.content)}/{min_size_limit/2} bytes')
+                elif len(response.content) < min_size_limit/4 and retry_count < 14:
+                    print(f'Error Request {n+1}: Insufficient data. {len(response.content)}/{min_size_limit/4} bytes')
+
+                else:
+                    print(f'Request {n+1} successful. Count: {len(response.content)} bytes')
+
+                    # debug
+                    filename = f'{n+1}.txt'
+                    filepath = f'output/height_test/{filename}'
+                    with open(filepath, 'wb') as f:
+                        f.write(response.content)
+
                     return response
-                print(f'Error:Insufficient data. Count: {len(response.content)} bytes')
                 
             else:
-                print('Response unsuccessful. Content-Type is not multipart.')  # Uexpected response 
+                print('Response unsuccessful. Content-Type is not multipart.')  # Unexpected response 
         else:
             print(f"Request failed with status code: {response.status_code}")
 
-        retry_count -= 1
-        print(f"Retrying request. Attempts left: {retry_count}")
-        time.sleep(2)
+        retry_count += 1
+        print(f"Retrying request {n+1}. Attempts left: {retry_limit-retry_count}")
+        time.sleep(5)
 
     raise Exception("Request failed. No attempts left.")
 

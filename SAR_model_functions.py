@@ -23,7 +23,48 @@ def debug_stats_print():
 #############################################################
 
 
-def terrain_encoding(terrain_filename="terrain_RGB_data.npy", folder="output/array/"):
+def terrain_encoding(terrain_type_encoding, terrain_rgb_values, terrain_filename="terrain_RGB_data.npy", folder="output/array/"):
+    try:
+        terrain_rgb_data_3d = np.load(f'{folder}{terrain_filename}')
+    except:
+        print(f'No terrain data found in {folder}{terrain_filename}')
+        return
+
+    print(f'Color analysis terrain encoding started...')
+    print(f'{terrain_rgb_data_3d.shape[1]}x{terrain_rgb_data_3d.shape[2]} pixels to process.')
+
+    # Transpose the 3D array so that color channels are last
+    terrain_rgb_data_2d = terrain_rgb_data_3d.transpose((1, 2, 0))
+   
+    # Flatten the 2D RGB array to a 1D array for efficient processing
+    flat_rgb_data = terrain_rgb_data_2d.reshape(-1, 3)
+
+    # Create unique RGB combinations and corresponding indices
+    unique_colors, inverse_indices = np.unique(flat_rgb_data, axis=0, return_inverse=True)
+    
+    # Create a mapping array for encodings
+    color_to_encoding_map = np.full(unique_colors.shape[0], terrain_type_encoding["Ukjent"], dtype=float)
+    for terrain_name, rgb in terrain_rgb_values.items():
+        # Compare unique colors directly without structured arrays
+        matches = np.all(unique_colors == np.array(rgb), axis=1)
+        matched_indices = np.where(matches)[0]
+        if matched_indices.size > 0:
+            color_to_encoding_map[matched_indices[0]] = terrain_type_encoding[terrain_name]
+    
+    # Use the inverse indices to map the encodings back to the original image shape
+    encoded_terrain = color_to_encoding_map[inverse_indices].reshape(terrain_rgb_data_2d.shape[0], terrain_rgb_data_2d.shape[1])
+    
+    # Pad Y axis for swamps since they are horizontal lines seperated by white lines
+    offset = [(1, 0), (-1, 0)]
+    swamp_val = terrain_type_encoding["Myr"]
+    steps = 1
+    set_neighbours(encoded_terrain, swamp_val, offset, steps)
+    
+    encoded_terrain[0][0] = 1 # To assure that the min value is atleast 1 for better visual when plotting 
+    np.save(f'{folder}terrain_data_encoded.npy', encoded_terrain)
+    print(f'Encoded terrain data np array saved to {folder}terrain_data_encoded.npy')
+
+def terrain_encoding2(terrain_filename="terrain_RGB_data.npy", folder="output/array/"):
     """
     Encodes the terrain data based on RGB values and saves the encoded terrain data as a numpy array.
 
@@ -94,6 +135,8 @@ def terrain_encoding(terrain_filename="terrain_RGB_data.npy", folder="output/arr
     np.save(f'{folder}terrain_data_encoded.npy', terrain_type)
     print(f'Encoded terrain data np array saved to {folder}terrain_data_encoded.npy')
 
+
+
 def add_trails_data_to_terrain(terrain_data, trail_files=[],folder="output/array/", trail_value=1):
         trails_added = False
         for trail_file in trail_files:
@@ -105,20 +148,22 @@ def add_trails_data_to_terrain(terrain_data, trail_files=[],folder="output/array
                 print(f'No trail data found in {folder}{trail_file}')
         
         if trails_added:
-            terrain_data = set_neighbours(terrain_data, value=trail_value)
-            np.save(f'{folder}terrain_with_trails.npy', terrain_data)
-            print(f'Trails added to terrain data and saved to {folder}terrain_with_trails.npy')
+            neighbour_offset = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+            steps = 8
+            terrain_data = set_neighbours(terrain_data, trail_value, neighbour_offset, steps)
+            np.save(f'{folder}terrain_with_trails_matrix.npy', terrain_data)
+            print(f'Trails added to terrain data and saved to {folder}terrain_with_trails_matrix.npy')
         else:
             print(f'No trail data added to terrain data.')
-            np.save(f'{folder}terrain_with_trails.npy', terrain_data)
+            np.save(f'{folder}terrain_with_trails_matrix.npy', terrain_data)
 
 
 
 
-def set_neighbours(matrix, value=1, steps=8):
+def set_neighbours(matrix, value, neighbour_offset, steps=1):
     for _ in range(steps):
         rows, cols = np.where(matrix == value)
-        neighbour_offset = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+        
         for row, col in zip(rows, cols):
             for offset in neighbour_offset:
                 new_row = row + offset[0]
