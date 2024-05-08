@@ -129,6 +129,6 @@ def process_model_data(search_id, lat, lng):
     # Calcuate polygons based on simulation
     print("Creating map overlays...")
     start_coords = (lat, lng)
-    create_map_layer(terrain_score_marix, start_coords, red_points, yellow_points, green_points, ModelConfig.OVERLAY_FOLDER.value, search_id)
+    layers = create_map_layer(terrain_score_marix, start_coords, red_points, yellow_points, green_points, ModelConfig.OVERLAY_FOLDER.value, search_id)
 
-    
+    return layers

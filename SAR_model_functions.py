@@ -496,9 +496,10 @@ def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_poin
     concave_hull_y = compute_concave_hull_from_points(yellow_points, BranchingConfig.HULL_ALPHA.value)
     concave_hull_g = compute_concave_hull_from_points(green_points, BranchingConfig.HULL_ALPHA.value)
     
-    create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:4326", folder=folder, search_id=search_id)
-    create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", crs="EPSG:4326", folder=folder, search_id=search_id)
-    create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", crs="EPSG:4326", folder=folder, search_id=search_id)
+    red_75 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:4326", folder=folder, search_id=search_id)
+    yellow_50 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", crs="EPSG:4326", folder=folder, search_id=search_id)
+    green_25 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", crs="EPSG:4326", folder=folder, search_id=search_id)
 
+    return (green_25, yellow_50, red_75)
 
     #create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833", folder=folder, search_id=search_id)
