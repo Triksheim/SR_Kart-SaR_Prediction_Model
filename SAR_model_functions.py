@@ -500,6 +500,6 @@ def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_poin
     yellow_50 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", crs="EPSG:4326", folder=folder, search_id=search_id)
     green_25 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", crs="EPSG:4326", folder=folder, search_id=search_id)
 
-    return (green_25, yellow_50, red_75)
+    
 
     #create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833", folder=folder, search_id=search_id)

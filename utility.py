@@ -425,6 +425,8 @@ def create_polygon_map_overlay(matrix, coords, hull, color="red", crs="EPSG:2583
             # save as GeoJSON
             gdf.to_file(f'{folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.geojson', driver='GeoJSON')
             print(f'Overlay saved to {folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.geojson')
+            # save the polygon as a shapefile
+            gdf.to_file(f'{folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.shp')
 
             return gdf
 
