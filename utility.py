@@ -9,6 +9,8 @@ from shapely.geometry import Polygon, MultiLineString, MultiPolygon
 from shapely.ops import polygonize, unary_union
 from scipy.spatial import Delaunay
 import geopandas as gpd
+from rasterio.features import rasterize
+from constants import *
 
 
 
@@ -123,6 +125,9 @@ def latlng_to_utm_bbox(lat, lng, radius):
     return (min_x, min_y, max_x, max_y)
 
 
+
+
+
 def extract_tiff_from_multipart_response(response, output_path="", save_to_file=False):
     """
     Extract a GeoTIFF from a multipart response and save it to a file.
@@ -132,7 +137,7 @@ def extract_tiff_from_multipart_response(response, output_path="", save_to_file=
     - output_path (str): The path to save the GeoTIFF file.
     - save_to_file (bool): Whether to save the GeoTIFF to a file or not. Returns the tiff_data when False.
     """
-    print(len(response.content))
+    #print(f'{len(response.content)} bytes received.')
     boundary = b'--wcs'
     start_of_tiff_part = response.content.find(boundary + b'\nContent-Type: image/tiff')
 
@@ -140,6 +145,7 @@ def extract_tiff_from_multipart_response(response, output_path="", save_to_file=
         start_of_data = response.content.find(b'\n\n', start_of_tiff_part) + 2  # Assuming double newline marks end of headers
         end_of_tiff_part = response.content.find(boundary, start_of_data)
         tiff_data = response.content[start_of_data:end_of_tiff_part].strip()
+        #print("TIFF part found:", len(tiff_data))
         
         if save_to_file:
             # Save the TIFF data to a file
@@ -262,7 +268,15 @@ def create_composite_image(images, output_path):
     print(f"Composite image saved to: {output_path}")
 
 
-def create_height_array(filepath, folder="output/array/"):
+def create_numpy_arrays_from_tiff(search_id, start_lat, start_lng, tiff_folder, output_folder):
+    # convert height tiff to numpy array and save to file
+    create_height_array(f'{tiff_folder}id{search_id}_{start_lat}_{start_lng}_height_composite.tif', output_folder)
+
+    # convert terrain tiff to 3d numpy array with RGB values and save to file
+    create_terrain_RGB_array(f'{tiff_folder}id{search_id}_{start_lat}_{start_lng}_terrain_composite.tif', output_folder)
+
+
+def create_height_array(filepath, output_folder="output/array/", search_id=0):
     """
     Create a NumPy array from a TIFF file containing height data.
 
@@ -274,12 +288,12 @@ def create_height_array(filepath, folder="output/array/"):
     None
     """
     height_dataset = exctract_data_from_tiff(tiff_path=filepath)
-    np.save(f'{folder}height_data.npy', height_dataset)
-    print(f'Height data np array saved to {folder}height_data.npy')
+    np.save(f'{output_folder}id{search_id}_height_matrix.npy', height_dataset[:-1,:-1])
+    print(f'Height data np array saved to {output_folder}height_matrix.npy')
 
 
 
-def create_terrain_RGB_array(filepath, folder="output/array/"):
+def create_terrain_RGB_array(filepath, output_folder="output/array/", search_id=0):
     """
     Create a RGB array from a terrain dataset stored in a TIFF file.
 
@@ -294,8 +308,8 @@ def create_terrain_RGB_array(filepath, folder="output/array/"):
     terrain_dataset_G = exctract_data_from_tiff(tiff_path=filepath, band_n=2)
     terrain_dataset_B = exctract_data_from_tiff(tiff_path=filepath, band_n=3)
     terrain_dataset = np.array([terrain_dataset_R, terrain_dataset_G, terrain_dataset_B])
-    np.save(f'{folder}terrain_RGB_data.npy', terrain_dataset)
-    print(f'Terrain RGB data np array saved to {folder}terrain_RGB_data.npy')
+    np.save(f'{output_folder}id{search_id}_terrain_RGB_matrix.npy', terrain_dataset)
+    print(f'Terrain RGB data np array saved to {output_folder}terrain_RGB_matrix.npy')
 
 
 
@@ -380,9 +394,10 @@ def get_polygon_coords_from_hull(hull):
 
 
 
-def create_polygon_map_overlay(matrix, dist, coords, hull, color="red", crs="EPSG:25833"):
+def create_polygon_map_overlay(matrix, coords, hull, color="red", crs="EPSG:25833", folder='output/overlays/overlay', search_id=0):
             matrix_width, matrix_height = matrix.shape[0], matrix.shape[1]
-            distance_per_index = dist  # Meters per index in the matrix
+            map_diameter = matrix_width * PreProcessConfig.REDUCTION_FACTOR.value  # Meters
+            distance_per_index = map_diameter / matrix_width  # Meters per index in the matrix
             lat, lng = coords
             center_x, center_y = transform_coordinates_to_utm(lat, lng)
 
@@ -404,7 +419,50 @@ def create_polygon_map_overlay(matrix, dist, coords, hull, color="red", crs="EPS
             # Create a polygon from the hull coordinates
             hull_polygon = Polygon(concave_hull_geo)
             # map polygon to coordinate reference system
-            gdf = gpd.GeoDataFrame(index=[0], crs=crs, geometry=[hull_polygon])
+            base_crs = 'EPSG:25833'
+            gdf = gpd.GeoDataFrame(index=[0], crs=base_crs, geometry=[hull_polygon])
+            gdf.to_crs(crs, inplace=True)
             # save as GeoJSON
-            gdf.to_file(f'output/overlays/overlay_{lat}_{lng}_{color}.geojson', driver='GeoJSON')
-            print(f'Overlay saved to output/overlays/overlay_{lat}_{lng}_{color}.geojson')
+            gdf.to_file(f'{folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.geojson', driver='GeoJSON')
+            print(f'Overlay saved to {folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.geojson')
+
+            # lng, lat
+
+def normalize_component(c):
+    if c > 0:
+        return 1
+    elif c < 0:
+        return -1
+    return 0
+
+def matrix_value_padding(matrix, value, padding=1, custom_offset=None):
+    if custom_offset is None:
+        padding_offset = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+    else:
+        padding_offset = custom_offset
+
+    for _ in range(padding):
+        rows, cols = np.where(matrix == value)
+        
+        for row, col in zip(rows, cols):
+            for offset in padding_offset:
+                new_row = row + offset[0]
+                new_col = col + offset[1]
+                try:
+                    matrix[new_row, new_col] = value
+                except:
+                    pass
+    return matrix
+
+def rasterize_gdf(gdf, height, width, transform):
+    raster = rasterize(
+            [(geom, 1) for geom in gdf.geometry],
+            out_shape=(height, width),
+            fill=0,
+            transform=transform,
+            all_touched=True
+        )
+    return raster
+
+def normalize_array(array, cap):
+    return array / cap
