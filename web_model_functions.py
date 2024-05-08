@@ -60,15 +60,16 @@ def get_model_data(search_id=0, start_coordinates=(68.443336, 17.527965), ranges
     
 def check_model_finished(search_id, lat, lng):
     while True:
+        time.sleep(10)
         try:
             if not os.path.exists(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_green_{lat}_{lng}_EPSG4326.geojson'):
-                print(f'id{search_id}_green_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
+                #print(f'id{search_id}_green_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
                 continue
             if not os.path.exists(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_yellow_{lat}_{lng}_EPSG4326.geojson'):
-                print(f'id{search_id}_yellow_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
+                #print(f'id{search_id}_yellow_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
                 continue
             if not os.path.exists(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_red_{lat}_{lng}_EPSG4326.geojson'):
-                print(f'id{search_id}_red_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
+                #print(f'id{search_id}_red_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
                 continue
 
 
