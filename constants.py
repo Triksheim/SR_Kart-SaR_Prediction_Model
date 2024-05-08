@@ -1,6 +1,7 @@
 from enum import Enum
 
 # commit test
+test_var = 1
 
 class ModelConfig(Enum):
     SQUARE_RADIUS = 500  # 1000m x 1000m square
