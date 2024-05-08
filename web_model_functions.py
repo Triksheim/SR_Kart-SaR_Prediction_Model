@@ -36,22 +36,22 @@ def check_model_data(search_id, lat, lng):
             # Check if the data is available for search_id
             time.sleep(10)
             
-            if not os.path.exists(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_terrain_composite.tif'):
+            if not os.path.exists(f'{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_terrain_composite.tif'):
                 print(f'id{search_id}_{lat}_{lng}_terrain_composite.tif not found in {ModelConfig.OUTPUT_FOLDER.value}')
                 continue
-            if not os.path.exists(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_height_composite.tif'):
+            if not os.path.exists(f'{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_height_composite.tif'):
                 print(f'id{search_id}_{lat}_{lng}_height_composite.tif not found in {ModelConfig.OUTPUT_FOLDER.value}')
                 continue
-            if not os.path.exists(f'./{ModelConfig.ARRAY_FOLDER.value}id{search_id}_gn_trail_data.npy'):
+            if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_gn_trail_data.npy'):
                 print(f'id{search_id}_gn_trail_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
                 continue
-            if not os.path.exists(f'./{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_trail_data.npy'):
+            if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_trail_data.npy'):
                 print(f'id{search_id}_osm_trail_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
                 continue
-            if not os.path.exists(f'./{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_building_data.npy'):
+            if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_building_data.npy'):
                 print(f'id{search_id}_osm_building_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
                 continue
-            if not os.path.exists(f'./{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_railway_data.npy'):
+            if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_railway_data.npy'):
                 print(f'id{search_id}_osm_railway_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
                 continue
 
@@ -74,9 +74,9 @@ def process_model_data(search_id, lat, lng):
     # Rasterize and encode terrain data
     start_time = time.perf_counter()
     # Create arrays from tiff files
-    create_height_array(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_height_composite.tif',
+    create_height_array(f'{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_height_composite.tif',
                          ModelConfig.ARRAY_FOLDER.value, search_id)
-    create_terrain_RGB_array(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_terrain_composite.tif',
+    create_terrain_RGB_array(f'{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_terrain_composite.tif',
                               ModelConfig.ARRAY_FOLDER.value, search_id)
     # Encode terrain type values
     terrain_rgb_file = f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_terrain_RGB_matrix.npy'

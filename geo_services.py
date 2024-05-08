@@ -349,7 +349,7 @@ def get_trail_map_osm(utm33_bbox, folder="output/", search_id=0):
     if not line_geometries:
         print("No geometries were created. Check Overpass response.")
         raster = np.zeros((int(utm33_bbox[2]-utm33_bbox[0]),int(utm33_bbox[3]-utm33_bbox[1])))
-        np.save(f'{folder}array/{search_id}_osm_trail_data.npy', raster)
+        np.save(f'{folder}array/id{search_id}_osm_trail_data.npy', raster)
         return
 
     # Create GeoDataFrame
@@ -430,7 +430,7 @@ def get_buildings_osm(utm33_bbox, folder="output/", search_id=0):
     if not line_geometries:
         print("No geometries were created. Check Overpass response.")
         raster = np.zeros((int(utm33_bbox[2]-utm33_bbox[0]),int(utm33_bbox[3]-utm33_bbox[1])))
-        np.save(f'{folder}array/osm_building_data.npy', raster)
+        np.save(f'{folder}array/id{search_id}_osm_building_data.npy', raster)
         return
 
     # Create GeoDataFrame
