@@ -1,12 +1,17 @@
 from enum import Enum
 
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+print(BASE_DIR)
+
 # commit test
 test_var = 1
 
 class ModelConfig(Enum):
     SQUARE_RADIUS = 500  # 1000m x 1000m square
     EXTRA_MAP_SIZE = 0.5  # 50% extra map size
-    OUTPUT_FOLDER = "output/"
+    OUTPUT_FOLDER = f'{BASE_DIR}output/'
     ARRAY_FOLDER = f'{OUTPUT_FOLDER}array/'
     OVERLAY_FOLDER = f'{OUTPUT_FOLDER}overlays/'
 

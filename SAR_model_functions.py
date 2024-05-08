@@ -1,8 +1,8 @@
+from sarModel.modelFunctions.utility import *
+from sarModel.modelFunctions.constants import *
 import numpy as np
 import math
 import random
-from utility import *
-from constants import *
 import time
 from scipy.ndimage import maximum_filter
 
