@@ -1,5 +1,7 @@
 from enum import Enum
 
+# commit test
+
 class ModelConfig(Enum):
     SQUARE_RADIUS = 500  # 1000m x 1000m square
     EXTRA_MAP_SIZE = 0.5  # 50% extra map size
