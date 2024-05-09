@@ -23,7 +23,7 @@ if __name__ == "__main__":
     plot = False
 
     # Set to collect data from GeoNorge and OSM
-    collect = True
+    collect = False
     plot_collect = False
 
     ## preprocessing functions start ## -----------------------------------------------------------
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     scatter_endpoints = False                          # scatter endpoints in plot
     branching_sim_iterations = 2                        # number of iterations for each direction (iter * 8)
     b_range_factor = 1.5 if city else 2                   # factor for "max" travel distance                
-    hull_alpha = 15                                        # "concavity" of the search area hull
+    hull_alpha = 10                                        # "concavity" of the search area hull
     ring_25 = 20                                            # percentage of max distance for 25% ring
     ring_50 = 50                                            # percentage of max distance for 50% ring
     worse_terrain_threshold = 0.5 if city else 0.3           # threshold for branching when worse terrain (0-1)

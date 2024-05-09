@@ -10,14 +10,13 @@ import os
 
 # Run from webserver
 def start_model(search_id, lat, lng, d25, d50, d75):
-    get_model_data(search_id, (lat, lng), (d75, d50, d25))
+    get_model_data(search_id, lat, lng, d25, d50, d75)
 
 
-def get_model_data(search_id=0, start_coordinates=(68.443336, 17.527965), ranges=(3200,1800,600)):
-    lat, lng = start_coordinates
-    max_range = ranges[0]
+def get_model_data(search_id, lat, lng, d25, d50, d75):
+    max_range = d75
     map_extension = calculate_map_extension(max_range, ModelConfig.SQUARE_RADIUS.value, ModelConfig.EXTRA_MAP_SIZE.value)
-    print(map_extension)
+    print(f'{map_extension=}')
 
     # get geo data from API requests
     collect_args = (search_id, lat, lng, ModelConfig.SQUARE_RADIUS.value, map_extension, ModelConfig.OUTPUT_FOLDER.value)
