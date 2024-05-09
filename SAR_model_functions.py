@@ -1,5 +1,10 @@
-from sarModel.modelFunctions.utility import *
-from sarModel.modelFunctions.constants import *
+try:
+    from sarModel.modelFunctions.utility import *
+    from sarModel.modelFunctions.constants import *
+except:
+    from utility import *
+    from constants import *
+
 import numpy as np
 import math
 import random
@@ -497,21 +502,8 @@ def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_poin
     concave_hull_y = compute_concave_hull_from_points(yellow_points, BranchingConfig.HULL_ALPHA.value)
     concave_hull_g = compute_concave_hull_from_points(green_points, BranchingConfig.HULL_ALPHA.value)
     
-    red_75 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:4326", folder=folder, search_id=search_id)
-    yellow_50 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", crs="EPSG:4326", folder=folder, search_id=search_id)
-    green_25 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", crs="EPSG:4326", folder=folder, search_id=search_id)
-
-    
-
-    # create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833", folder=folder, search_id=search_id)
-
-
-    
     # plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
     # plt.colorbar(label="Terreng: Vaskelig  ->  Lett")
-    # #circle = Circle((radius, radius), (radius-(radius/10)), color="blue", fill=False)   # search area circle
-    # #plt.gca().add_patch(circle)
-
     # if concave_hull_r:
     #     x_r, y_r = get_polygon_coords_from_hull(concave_hull_r)
     #     plt.fill(x_r, y_r, edgecolor='r',linewidth=3, fill=False)
@@ -521,9 +513,20 @@ def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_poin
     # if concave_hull_g:
     #     x_g, y_g = get_polygon_coords_from_hull(concave_hull_g)
     #     plt.fill(x_g, y_g, edgecolor='g',linewidth=3, fill=False)
-
-    
-    
     # plt.title("Branching result plot")
     # plt.axis('equal')
     # plt.show()
+
+
+
+
+    red_75 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:4326", folder=folder, search_id=search_id)
+    yellow_50 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", crs="EPSG:4326", folder=folder, search_id=search_id)
+    green_25 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", crs="EPSG:4326", folder=folder, search_id=search_id)
+
+
+    # create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833", folder=folder, search_id=search_id)
+
+
+    
+    

@@ -1,4 +1,9 @@
-from .constants import *
+try:
+    from sarModel.modelFunctions.constants import *
+except:
+    from constants import *
+
+
 import pyproj
 import rasterio
 from rasterio.merge import merge

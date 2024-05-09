@@ -1,4 +1,9 @@
-from sarModel.modelFunctions.utility import *
+try:
+    from sarModel.modelFunctions.utility import *
+except:
+    from utility import *
+
+
 import requests
 from xml.etree import ElementTree as ET
 from io import BytesIO

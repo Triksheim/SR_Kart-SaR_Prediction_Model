@@ -6,9 +6,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class ModelConfig(Enum):
+    if "sarModel" in str(BASE_DIR):
+        OUTPUT_FOLDER = f'{BASE_DIR}/modelFunctions/output/'
+    else:
+        OUTPUT_FOLDER = f'output/'
+
     SQUARE_RADIUS = 500  # 1000m x 1000m square
     EXTRA_MAP_SIZE = 0.5  # 50% extra map size
-    OUTPUT_FOLDER = f'{BASE_DIR}/modelFunctions/output/'
+
+
+    #OUTPUT_FOLDER = f'{BASE_DIR}/modelFunctions/output/'
+
     ARRAY_FOLDER = f'{OUTPUT_FOLDER}array/'
     OVERLAY_FOLDER = f'{OUTPUT_FOLDER}overlays/'
 

@@ -1,10 +1,18 @@
-from sarModel.modelFunctions.SAR_model_functions import *
-from sarModel.modelFunctions.geo_services import *
-from sarModel.modelFunctions.constants import *
+try:
+    from sarModel.modelFunctions.SAR_model_functions import *
+    from sarModel.modelFunctions.geo_services import *
+    from sarModel.modelFunctions.constants import *
+except:
+    from SAR_model_functions import *
+    from geo_services import *
+    from constants import *
+
 import threading
 import time
 import os
 import geopandas as gpd
+
+import matplotlib.pyplot as plt
 
 
 
@@ -31,6 +39,17 @@ def start_model(search_id, lat, lng, d25, d50, d75):
     yellow_polygon = yellow_shp.geometry.iloc[0]
     red_polygon = red_shp.geometry.iloc[0]
     
+    # poly_gdf = gpd.GeoDataFrame({'geometry': [green_polygon, yellow_polygon, red_polygon],
+    #                     'color': ['green', 'yellow', 'red']}, crs='EPSG:4326')
+
+    # # Plotting
+    # fig, ax = plt.subplots()
+    # for color, group in poly_gdf.groupby('color'):
+    #     group.plot(ax=ax, color=color, edgecolor='black')
+
+    # plt.show()
+
+
 
     return (green_polygon,yellow_polygon,red_polygon), (green_json,yellow_json,red_json)
 
@@ -46,7 +65,7 @@ def start_model(search_id, lat, lng, d25, d50, d75):
 def get_model_data(search_id, lat, lng, d25, d50, d75):
     max_range = d75
     map_extension = calculate_map_extension(max_range, ModelConfig.SQUARE_RADIUS.value, ModelConfig.EXTRA_MAP_SIZE.value)
-    print(map_extension)
+    print(f'{map_extension=}')
 
     # get geo data from API requests
     collect_args = (search_id, lat, lng, ModelConfig.SQUARE_RADIUS.value, map_extension, ModelConfig.OUTPUT_FOLDER.value)
@@ -62,6 +81,9 @@ def check_model_finished(search_id, lat, lng):
         time.sleep(10)
         try:
             if not os.path.exists(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_green_{lat}_{lng}_EPSG4326.geojson'):
+                # print os path
+                print(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_green_{lat}_{lng}_EPSG4326.geojson')
+                
                 #print(f'id{search_id}_green_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
                 continue
             if not os.path.exists(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_yellow_{lat}_{lng}_EPSG4326.geojson'):
