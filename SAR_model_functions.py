@@ -177,10 +177,11 @@ def reduce_resolution(data, factor=10, method="mean"):
 
 
 
-def combine_terrain_type_and_slope(terrain_type, slope, method="mean", filter_size=3, folder="output/array/", search_id=0):
-    terrain_type[terrain_type <= 0.05] = 0
-    slope[slope <= 0.1] = 0
-    combined_matrix = combine_matrixes(terrain_type, slope, method)
+def combine_terrain_type_and_slope(terrain_type_matrix, slope_matrix, method="mean", filter_size=3, folder="output/array/", search_id=0):
+    slope_matrix[terrain_type_matrix == 1] = 1
+    terrain_type_matrix[terrain_type_matrix <= 0.05] = 0
+    slope_matrix[slope_matrix <= 0.1] = 0
+    combined_matrix = combine_matrixes(terrain_type_matrix, slope_matrix, method)
     combined_matrix_filtered = maximum_filter(combined_matrix, size=filter_size)
     print(f"Combined terrain score matrix saved to: {folder}{search_id}_terrain_score_matrix.npy")
     np.save(f'{folder}id{search_id}_terrain_score_matrix.npy', combined_matrix_filtered)
@@ -502,4 +503,27 @@ def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_poin
 
     
 
-    #create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833", folder=folder, search_id=search_id)
+    # create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833", folder=folder, search_id=search_id)
+
+
+    
+    # plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
+    # plt.colorbar(label="Terreng: Vaskelig  ->  Lett")
+    # #circle = Circle((radius, radius), (radius-(radius/10)), color="blue", fill=False)   # search area circle
+    # #plt.gca().add_patch(circle)
+
+    # if concave_hull_r:
+    #     x_r, y_r = get_polygon_coords_from_hull(concave_hull_r)
+    #     plt.fill(x_r, y_r, edgecolor='r',linewidth=3, fill=False)
+    # if concave_hull_y:
+    #     x_y, y_y = get_polygon_coords_from_hull(concave_hull_y)
+    #     plt.fill(x_y, y_y, edgecolor='y',linewidth=3, fill=False)
+    # if concave_hull_g:
+    #     x_g, y_g = get_polygon_coords_from_hull(concave_hull_g)
+    #     plt.fill(x_g, y_g, edgecolor='g',linewidth=3, fill=False)
+
+    
+    
+    # plt.title("Branching result plot")
+    # plt.axis('equal')
+    # plt.show()

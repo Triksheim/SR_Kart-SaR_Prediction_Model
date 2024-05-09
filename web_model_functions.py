@@ -11,7 +11,7 @@ import geopandas as gpd
 
 # Run from webserver
 def start_model(search_id, lat, lng, d25, d50, d75):
-    get_model_data(search_id, (lat, lng), (d75, d50, d25))
+    get_model_data(search_id, lat, lng, d25, d50, d75)
     check_model_finished(search_id, lat, lng)
     print('Model finished')
 
@@ -43,9 +43,8 @@ def start_model(search_id, lat, lng, d25, d50, d75):
 
 
 
-def get_model_data(search_id=0, start_coordinates=(68.443336, 17.527965), ranges=(3200,1800,600)):
-    lat, lng = start_coordinates
-    max_range = ranges[0]
+def get_model_data(search_id, lat, lng, d25, d50, d75):
+    max_range = d75
     map_extension = calculate_map_extension(max_range, ModelConfig.SQUARE_RADIUS.value, ModelConfig.EXTRA_MAP_SIZE.value)
     print(map_extension)
 
@@ -182,3 +181,4 @@ def process_model_data(search_id, lat, lng):
     start_coords = (lat, lng)
     layers = create_map_layer(terrain_score_marix, start_coords, red_points, yellow_points, green_points, ModelConfig.OVERLAY_FOLDER.value, search_id)
 
+    

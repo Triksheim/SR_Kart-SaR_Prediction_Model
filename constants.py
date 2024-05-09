@@ -25,7 +25,7 @@ class BranchingConfig(Enum):
     RANDOM_FACTOR = 10  # n/100.000
     D25 = 20
     D50 = 50
-    HULL_ALPHA = 15
+    HULL_ALPHA = 10
 
 class EncodingConfig(Enum):
     TRAIL = 1
