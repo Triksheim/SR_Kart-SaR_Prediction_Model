@@ -7,8 +7,8 @@ from pathlib import Path
 
 class ModelConfig:
     
-    def __init__(self, base_dir='output/', winter=False):
-        self.BASE_DIR = base_dir
+    def __init__(self, base_dir='output', winter=False):
+        self.BASE_DIR = f'{base_dir}/'
         self.ARRAY_FOLDER = f'{self.BASE_DIR}array/'
         self.OVERLAY_FOLDER = f'{self.BASE_DIR}overlays/'
         
