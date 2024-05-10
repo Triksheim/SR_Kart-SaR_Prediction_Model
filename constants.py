@@ -1,9 +1,22 @@
 from enum import Enum
 
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
 class ModelConfig(Enum):
+    if "sarModel" in str(BASE_DIR):
+        OUTPUT_FOLDER = f'{BASE_DIR}/modelFunctions/output/'
+    else:
+        OUTPUT_FOLDER = f'output/'
+
     SQUARE_RADIUS = 500  # 1000m x 1000m square
     EXTRA_MAP_SIZE = 0.5  # 50% extra map size
-    OUTPUT_FOLDER = "output/"
+
+
+    #OUTPUT_FOLDER = f'{BASE_DIR}/modelFunctions/output/'
+
     ARRAY_FOLDER = f'{OUTPUT_FOLDER}array/'
     OVERLAY_FOLDER = f'{OUTPUT_FOLDER}overlays/'
 
@@ -20,7 +33,7 @@ class BranchingConfig(Enum):
     RANDOM_FACTOR = 10  # n/100.000
     D25 = 20
     D50 = 50
-    HULL_ALPHA = 15
+    HULL_ALPHA = 10
 
 class EncodingConfig(Enum):
     TRAIL = 1

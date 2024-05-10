@@ -1,9 +1,18 @@
-from SAR_model_functions import *
-from geo_services import *
-from constants import *
+try:
+    from sarModel.modelFunctions.SAR_model_functions import *
+    from sarModel.modelFunctions.geo_services import *
+    from sarModel.modelFunctions.constants import *
+except:
+    from SAR_model_functions import *
+    from geo_services import *
+    from constants import *
+
 import threading
 import time
 import os
+import geopandas as gpd
+
+import matplotlib.pyplot as plt
 
 
 
@@ -11,6 +20,46 @@ import os
 # Run from webserver
 def start_model(search_id, lat, lng, d25, d50, d75):
     get_model_data(search_id, lat, lng, d25, d50, d75)
+    check_model_finished(search_id, lat, lng)
+    print('Model finished')
+
+    green_overlay_name = f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_green_{lat}_{lng}_EPSG4326'
+    yellow_overlay_name = f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_yellow_{lat}_{lng}_EPSG4326'
+    red_overlay_name = f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_red_{lat}_{lng}_EPSG4326'
+
+    green_json = gpd.read_file(f'{green_overlay_name}.geojson')
+    yellow_json = gpd.read_file(f'{yellow_overlay_name}.geojson')
+    red_json = gpd.read_file(f'{red_overlay_name}.geojson')
+    
+    green_shp = gpd.read_file(f'{green_overlay_name}.shp')
+    yellow_shp = gpd.read_file(f'{yellow_overlay_name}.shp')
+    red_shp = gpd.read_file(f'{red_overlay_name}.shp')
+
+    green_polygon = green_shp.geometry.iloc[0]
+    yellow_polygon = yellow_shp.geometry.iloc[0]
+    red_polygon = red_shp.geometry.iloc[0]
+    
+    # poly_gdf = gpd.GeoDataFrame({'geometry': [green_polygon, yellow_polygon, red_polygon],
+    #                     'color': ['green', 'yellow', 'red']}, crs='EPSG:4326')
+
+    # # Plotting
+    # fig, ax = plt.subplots()
+    # for color, group in poly_gdf.groupby('color'):
+    #     group.plot(ax=ax, color=color, edgecolor='black')
+
+    # plt.show()
+
+
+
+    return (green_polygon,yellow_polygon,red_polygon), (green_json,yellow_json,red_json)
+
+    
+
+    
+    
+
+
+
 
 
 def get_model_data(search_id, lat, lng, d25, d50, d75):
@@ -27,7 +76,31 @@ def get_model_data(search_id, lat, lng, d25, d50, d75):
     check_thread = threading.Thread(target=check_model_data, args=(search_id, lat, lng))
     check_thread.start()
     
+def check_model_finished(search_id, lat, lng):
+    while True:
+        time.sleep(10)
+        try:
+            if not os.path.exists(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_green_{lat}_{lng}_EPSG4326.geojson'):
+                # print os path
+                print(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_green_{lat}_{lng}_EPSG4326.geojson')
+                
+                #print(f'id{search_id}_green_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
+                continue
+            if not os.path.exists(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_yellow_{lat}_{lng}_EPSG4326.geojson'):
+                #print(f'id{search_id}_yellow_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
+                continue
+            if not os.path.exists(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_red_{lat}_{lng}_EPSG4326.geojson'):
+                #print(f'id{search_id}_red_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
+                continue
 
+
+            # If all files are found, break the loop
+            print(f'Overlay files found for id: {search_id}')
+            break
+
+        except:
+            print(f'Error checking overlay files for id: {search_id}')
+            time.sleep(10)
 
 def check_model_data(search_id, lat, lng):
     while True:
@@ -35,22 +108,22 @@ def check_model_data(search_id, lat, lng):
             # Check if the data is available for search_id
             time.sleep(10)
             
-            if not os.path.exists(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_terrain_composite.tif'):
+            if not os.path.exists(f'{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_terrain_composite.tif'):
                 print(f'id{search_id}_{lat}_{lng}_terrain_composite.tif not found in {ModelConfig.OUTPUT_FOLDER.value}')
                 continue
-            if not os.path.exists(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_height_composite.tif'):
+            if not os.path.exists(f'{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_height_composite.tif'):
                 print(f'id{search_id}_{lat}_{lng}_height_composite.tif not found in {ModelConfig.OUTPUT_FOLDER.value}')
                 continue
-            if not os.path.exists(f'./{ModelConfig.ARRAY_FOLDER.value}id{search_id}_gn_trail_data.npy'):
+            if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_gn_trail_data.npy'):
                 print(f'id{search_id}_gn_trail_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
                 continue
-            if not os.path.exists(f'./{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_trail_data.npy'):
+            if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_trail_data.npy'):
                 print(f'id{search_id}_osm_trail_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
                 continue
-            if not os.path.exists(f'./{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_building_data.npy'):
+            if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_building_data.npy'):
                 print(f'id{search_id}_osm_building_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
                 continue
-            if not os.path.exists(f'./{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_railway_data.npy'):
+            if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_railway_data.npy'):
                 print(f'id{search_id}_osm_railway_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
                 continue
 
@@ -73,9 +146,9 @@ def process_model_data(search_id, lat, lng):
     # Rasterize and encode terrain data
     start_time = time.perf_counter()
     # Create arrays from tiff files
-    create_height_array(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_height_composite.tif',
+    create_height_array(f'{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_height_composite.tif',
                          ModelConfig.ARRAY_FOLDER.value, search_id)
-    create_terrain_RGB_array(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_terrain_composite.tif',
+    create_terrain_RGB_array(f'{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_terrain_composite.tif',
                               ModelConfig.ARRAY_FOLDER.value, search_id)
     # Encode terrain type values
     terrain_rgb_file = f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_terrain_RGB_matrix.npy'
@@ -128,6 +201,6 @@ def process_model_data(search_id, lat, lng):
     # Calcuate polygons based on simulation
     print("Creating map overlays...")
     start_coords = (lat, lng)
-    create_map_layer(terrain_score_marix, start_coords, red_points, yellow_points, green_points, ModelConfig.OVERLAY_FOLDER.value, search_id)
+    layers = create_map_layer(terrain_score_marix, start_coords, red_points, yellow_points, green_points, ModelConfig.OVERLAY_FOLDER.value, search_id)
 
     

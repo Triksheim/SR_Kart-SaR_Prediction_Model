@@ -1,8 +1,13 @@
+try:
+    from sarModel.modelFunctions.utility import *
+    from sarModel.modelFunctions.constants import *
+except:
+    from utility import *
+    from constants import *
+
 import numpy as np
 import math
 import random
-from utility import *
-from constants import *
 import time
 from scipy.ndimage import maximum_filter
 
@@ -177,11 +182,11 @@ def reduce_resolution(data, factor=10, method="mean"):
 
 
 
-def combine_terrain_type_and_slope(terrain_type, slope, method="mean", filter_size=3, folder="output/array/", search_id=0):
-    slope[terrain_type == 1] = 1
-    terrain_type[terrain_type <= 0.05] = 0
-    slope[slope <= 0.1] = 0
-    combined_matrix = combine_matrixes(terrain_type, slope, method)
+def combine_terrain_type_and_slope(terrain_type_matrix, slope_matrix, method="mean", filter_size=3, folder="output/array/", search_id=0):
+    slope_matrix[terrain_type_matrix == 1] = 1
+    terrain_type_matrix[terrain_type_matrix <= 0.05] = 0
+    slope_matrix[slope_matrix <= 0.1] = 0
+    combined_matrix = combine_matrixes(terrain_type_matrix, slope_matrix, method)
     combined_matrix_filtered = maximum_filter(combined_matrix, size=filter_size)
     print(f"Combined terrain score matrix saved to: {folder}{search_id}_terrain_score_matrix.npy")
     np.save(f'{folder}id{search_id}_terrain_score_matrix.npy', combined_matrix_filtered)
@@ -531,11 +536,13 @@ def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_poin
 
 
 
-
-    create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:4326", folder=folder, search_id=search_id)
-    create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", crs="EPSG:4326", folder=folder, search_id=search_id)
-    create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", crs="EPSG:4326", folder=folder, search_id=search_id)
-
+    red_75 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:4326", folder=folder, search_id=search_id)
+    yellow_50 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", crs="EPSG:4326", folder=folder, search_id=search_id)
+    green_25 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", crs="EPSG:4326", folder=folder, search_id=search_id)
 
 
-    #create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833", folder=folder, search_id=search_id)
+    # create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833", folder=folder, search_id=search_id)
+
+
+    
+    
