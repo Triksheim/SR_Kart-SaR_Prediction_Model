@@ -281,18 +281,19 @@ def create_numpy_arrays_from_tiff(search_id, start_lat, start_lng, tiff_folder, 
     create_terrain_RGB_array(f'{tiff_folder}id{search_id}_{start_lat}_{start_lng}_terrain_composite.tif', output_folder)
 
 
-def create_height_array(filepath, output_folder="output/array/", search_id=0):
+def create_height_array(tiff_path, output_folder="output/array", search_id=0):
     """
     Create a NumPy array from a TIFF file containing height data.
 
     Parameters:
     filepath (str): The path to the TIFF file.
-    folder (str, optional): The folder to save the NumPy array. Default is "output/array/".
+    folder (str, optional): The folder to save the NumPy array. Default is "output/".
 
     Returns:
     None
     """
-    height_dataset = exctract_data_from_tiff(tiff_path=filepath)
+
+    height_dataset = exctract_data_from_tiff(tiff_path)
     np.save(f'{output_folder}id{search_id}_height_matrix.npy', height_dataset[:-1,:-1])
     print(f'Height data np array saved to {output_folder}height_matrix.npy')
 
@@ -430,12 +431,12 @@ def create_polygon_map_overlay(matrix, coords, hull, color="red", crs="EPSG:2583
             # save as GeoJSON
             gdf.to_file(f'{folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.geojson', driver='GeoJSON')
             print(f'Overlay saved to {folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.geojson')
-            # save the polygon as a shapefile
-            gdf.to_file(f'{folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.shp')
+            # # save the polygon as a shapefile
+            # gdf.to_file(f'{folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.shp')
 
-            return gdf
+            return hull_polygon
 
-            # lng, lat
+            
 
 def normalize_component(c):
     if c > 0:

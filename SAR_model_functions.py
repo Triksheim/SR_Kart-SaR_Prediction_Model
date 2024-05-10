@@ -467,16 +467,19 @@ def create_slope_matrix(height_matrix, norm_cap, folder, search_id=0):
     np.save(f'{folder}id{search_id}_slope_matrix.npy', inv_slope_matrix)
     return inv_slope_matrix
 
-def branching_simulation(terrain_score_matrix, search_id=0):
-    ring_25 = BranchingConfig.D25.value
-    ring_50 = BranchingConfig.D50.value
-    worse_terrain_threshold = BranchingConfig.WORSE_TERRAIN.value
-    random_branching_chance = BranchingConfig.RANDOM_FACTOR.value
+def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config):
+    
+    worse_terrain_threshold = config.WORSE_TERRAIN
+    random_branching_chance = config.RANDOM_FACTOR
     
     radius = terrain_score_matrix.shape[0] / 2
     center = (int(radius), int(radius))
-    max_distance = radius * BranchingConfig.RANGE_FACTOR.value
-    max_energy = max_distance
+
+    ring_25 = (d25 / config.REDUCTION_FACTOR) * config.RANGE_FACTOR
+    ring_50 = (d50 / config.REDUCTION_FACTOR) * config.RANGE_FACTOR
+    ring_75 = (d75 / config.REDUCTION_FACTOR) * config.RANGE_FACTOR
+
+    max_distance = ring_75
     
     green_coords = set()
     yellow_coords = set()
@@ -486,22 +489,22 @@ def branching_simulation(terrain_score_matrix, search_id=0):
     sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
 
     start_time = time.perf_counter()
-    for n in range(BranchingConfig.ITERATIONS.value):
+    for n in range(config.ITERATIONS):
         curr_dir = 1
         for i in range(-1, 2, 1):
             for j in range(-1, 2, 1):
                 move_direction = (i, j)
                 if move_direction != (0, 0):
-                    print(f'Iteration {n+1}/{BranchingConfig.ITERATIONS.value}, Direction {curr_dir}/{8}')
+                    print(f'Iteration {n+1}/{config.ITERATIONS}, Direction {curr_dir}/{8}')
                     curr_dir += 1
                     branches = set() # reset branches
                     sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
-                    branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_energy, max_energy, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, 0)
+                    branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_distance, max_distance, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, 0)
                     
     end_time = time.perf_counter()
 
 
-    print(f'Params: {BranchingConfig.ITERATIONS.value} iter, {BranchingConfig.RANGE_FACTOR.value} b_range, {worse_terrain_threshold} terrain_thrshld, {random_branching_chance} random_chance')
+    print(f'Params: {config.ITERATIONS} iter, {config.RANGE_FACTOR} b_range, {worse_terrain_threshold} terrain_thrshld, {random_branching_chance} random_chance')
     print(f"Branching simulation took {end_time - start_time} seconds")
     print(f'Unique paths simulated: {len(red_coords)}')  # number of endpoints/paths
     debug_stats_print()
@@ -513,10 +516,10 @@ def branching_simulation(terrain_score_matrix, search_id=0):
 
     return red_points, yellow_points, green_points
 
-def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_points, green_points, folder, search_id=0):
-    concave_hull_r = compute_concave_hull_from_points(red_points, BranchingConfig.HULL_ALPHA.value)
-    concave_hull_y = compute_concave_hull_from_points(yellow_points, BranchingConfig.HULL_ALPHA.value)
-    concave_hull_g = compute_concave_hull_from_points(green_points, BranchingConfig.HULL_ALPHA.value)
+def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_points, green_points, folder, search_id, config):
+    concave_hull_r = compute_concave_hull_from_points(red_points, config.HULL_ALPHA)
+    concave_hull_y = compute_concave_hull_from_points(yellow_points, config.HULL_ALPHA)
+    concave_hull_g = compute_concave_hull_from_points(green_points, config.HULL_ALPHA)
     
     # plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
     # plt.colorbar(label="Terreng: Vaskelig  ->  Lett")
@@ -543,6 +546,6 @@ def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_poin
 
     # create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833", folder=folder, search_id=search_id)
 
-
+    return green_25, yellow_50, red_75
     
     
