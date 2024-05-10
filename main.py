@@ -44,6 +44,22 @@ if __name__ == "__main__":
         "Ferskvann":    0.05,
         "Hav":          0.01,   
     }
+
+    terrain_type_encoding_w = {    # Encoded values for terrain type score
+        "Sti og vei":   1,
+        "Ukjent":       0.8,
+        "Åpen fastmark":0.8,
+        "Bebygd":       0.8,
+        "Dyrket mark":  0.6, 
+        "Skog":         0.5,
+        "Myr":          0.8,
+        "Ferskvann":    0.8,
+        "Hav":          0.01,   
+    }
+
+
+
+
     terrain_rgb_values = {  # RGB values for terrain types (from GeoNorge data)
         "Skog": (158, 204, 115),
         "Åpen fastmark": (217, 217, 217),
@@ -93,31 +109,41 @@ if __name__ == "__main__":
     l_range_factor = 2                # factor for "max" travel distance
 
     # Branching simulation
-    branching_simulation = True
+    branching_sim = True
     plot_branching = True
     scatter_endpoints = False                          # scatter endpoints in plot
-    branching_sim_iterations = 2                        # number of iterations for each direction (iter * 8)
-    b_range_factor = 1.5 if city else 2                   # factor for "max" travel distance                
-    hull_alpha = 10                                        # "concavity" of the search area hull
-    ring_25 = 20                                            # percentage of max distance for 25% ring
-    ring_50 = 50                                            # percentage of max distance for 50% ring
+    branching_sim_iterations = 2                    # number of iterations for each direction (iter * 8)
+    b_range_factor = 1                 # factor for "max" travel distance                
+    hull_alpha = 15                                        # "concavity" of the search area hull
+    #ring_25 = 20                                            # percentage of max distance for 25% ring
+    #ring_50 = 50                                            # percentage of max distance for 50% ring
     worse_terrain_threshold = 0.5 if city else 0.3           # threshold for branching when worse terrain (0-1)
     random_branching_chance = 10                             # chance of random branching (n/100.000)
+    d1 = 600
+    d2 = 1800
+    d3 = 3200
 
     # Create map overlay layer with CRS from branching simulation results
-    create_map_layer = True if branching_simulation else False
+    create_map_overlay = True if branching_sim else False
     #create_map_layer = False
     
 
 
     # Map size, increase map_extention to get larger area by increasing number of squares in each direction
     square_radius = 500     # meter radius from center per map square, total 2*r x 2*r area
-    map_extention = 1       # square extension from centre by 2*map_extention*square_radius in each direction
+    #map_extention = 1       # square extension from centre by 2*map_extention*square_radius in each direction
+
+
+    map_extention = calculate_map_extension(d3, square_radius)
+    print(f'{map_extention=}')
 
 
     # WGS84 coordinate for the center of the search area (last seen location of the missing person)
-    start_lat = 68.443336
-    start_lng = 17.527965
+    # start_lat = 68.443336
+    # start_lng = 17.527965
+
+    start_lat = 68.44515518547429
+    start_lng = 17.53628253936768
     
 
     #68.4383953706666, 17.427225974564415 narvik sentrum
@@ -331,14 +357,18 @@ if __name__ == "__main__":
 
 
 
-    if branching_simulation:
+    if branching_sim:
         
         terrain_score_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_score_matrix.npy')
         
         radius = terrain_score_matrix.shape[0] / 2
         center = (int(radius), int(radius))
-        max_distance = radius * b_range_factor
-        max_energy = max_distance
+
+        d25 = (d1 / reduction_factor) * b_range_factor
+        d50 = (d2 / reduction_factor) * b_range_factor
+        d75 = (d3 / reduction_factor) * b_range_factor
+        max_energy = d75
+        print(f"Max distance: {max_energy}")
         
         green_coords = set()
         yellow_coords = set()
@@ -360,7 +390,7 @@ if __name__ == "__main__":
                         curr_dir += 1
                         branches = set() # reset branches
                         sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
-                        branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_energy, max_energy, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, 0)
+                        branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_energy, max_energy, sets, d25, d50, worse_terrain_threshold, random_branching_chance, 0)
                         
         end_time = time.perf_counter()
 
@@ -385,7 +415,14 @@ if __name__ == "__main__":
         if plot or plot_branching:
             plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
             plt.colorbar(label="Terreng: Vaskelig  ->  Lett")
-            circle = Circle((radius, radius), (radius-(radius/10)), color="blue", fill=False)   # search area circle
+
+            circle = Circle((radius, radius), (d1/reduction_factor), color="green", fill=False)   # search area circle
+            plt.gca().add_patch(circle)
+
+            circle = Circle((radius, radius), (d2/reduction_factor), color="yellow", fill=False)   # search area circle
+            plt.gca().add_patch(circle)
+
+            circle = Circle((radius, radius), (d3/reduction_factor), color="red", fill=False)   # search area circle
             plt.gca().add_patch(circle)
 
             if concave_hull_r:
@@ -410,7 +447,7 @@ if __name__ == "__main__":
     
 
 
-    if create_map_layer:
+    if create_map_overlay:
         start_coords = start_lat, start_lng  # matrix center
         map_diameter = ((map_extention * 2) + 1) * (square_radius * 2)  # Diameter of the map in meters
         distance_per_index =  map_diameter / terrain_score_matrix.shape[0]  # Meters per index in the matrix

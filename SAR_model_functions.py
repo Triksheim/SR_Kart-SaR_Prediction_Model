@@ -104,7 +104,7 @@ def add_building_data_to_terrain(terrain_data, building_files=[],folder="output/
             try:
                 buildings = np.load(f'{folder}{building_file}')
 
-                buildings = matrix_value_padding(buildings, 1, 2) # building padding
+                buildings = matrix_value_padding(buildings, 1, 6) # building padding
 
                 terrain_data[buildings == 1] = building_value
                 buildings_added = True
@@ -277,11 +277,11 @@ def movement(matrix, start_idx, move_dir):
             
         # diagonal
         if abs(sx) == abs(sy):
-            energy_cost = math.sqrt(2) / matrix[y, x]
+            energy_cost = (math.sqrt(2) / matrix[y, x])
 
         # straight
         elif abs(sx) != abs(sy):
-            energy_cost = 1 / matrix[y, x]
+            energy_cost = (1 / matrix[y, x])
 
         # somewhere else...
         else:
@@ -310,11 +310,12 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
     energy_left = move_resource - movement_cost
 
     # save green and yellow coords if energy dips threshold
-    if move_resource > initial_move_resource*(100-ring_25)/100:
-        if energy_left < initial_move_resource*(100-ring_25)/100:
+    if move_resource > initial_move_resource - ring_25:
+        if energy_left < initial_move_resource - ring_25:
             green.add((new_x, new_y))
-    elif move_resource > initial_move_resource*(100-ring_50)/100:
-        if energy_left < initial_move_resource*(100-ring_50)/100:
+
+    elif move_resource > initial_move_resource - ring_50:
+        if energy_left < initial_move_resource - ring_50:
             if (new_x, new_y) in green:
                 cnt_kill_1 += 1
                 return
@@ -322,9 +323,9 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
                 yellow.add((new_x, new_y))
 
 
-    elif move_resource > initial_move_resource*((100-ring_50)/2)/100:
+    elif move_resource > initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
         #print("Start of last cutoff")
-        if energy_left < initial_move_resource*((100-ring_50)/2)/100:
+        if energy_left < initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
             if (new_x, new_y) in green or (new_x, new_y) in yellow:
                 #print(f'Killing branch: {new_x, new_y}')
                 cnt_kill_2 += 1
@@ -336,20 +337,25 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
 
     
     # branches kill offs
-    if move_resource < initial_move_resource*(100-((ring_50+ring_25)/2))/100:
+
+    # green kill off
+    if move_resource < initial_move_resource - (ring_25 *1.1):
         if (new_x, new_y) in green:
             cnt_kill_1 += 1
             return
 
-    if move_resource < initial_move_resource*(100-ring_50)/100:
+    # yellow kill off
+    if move_resource < initial_move_resource - (ring_50 *1.1):
         if (new_x, new_y) in yellow:
             cnt_kill_2 += 1
             return
 
-    if move_resource < initial_move_resource*((100-ring_50)/2)/100:
+    # killoff between yellow and red
+    if move_resource < initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2))*1.1:
         if (new_x, new_y) in last_cutoff:
             cnt_kill_3 += 1
             return
+        
     #print(f'{step_count}/{initial_move_resource*2} steps')
     if step_count > initial_move_resource*2:
         print(f'Step limit reached: {step_count}')
@@ -365,6 +371,15 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
         except:
             terrain_change = 10  # prob out of bounds
 
+
+        if energy_left > ring_25:
+            rand_int = random.randint(1,1000)
+        elif energy_left > ring_50:
+            rand_int = random.randint(1,10000)
+        else:
+            rand_int = random.randint(1,100000)
+
+
         # Branching if terrain change is significant worse
         if terrain_change < -worse_terrain_threshold and (new_x, new_y) not in branches:
             cnt4 += 1
@@ -376,8 +391,8 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
             new_directions = [
                 (sy,-sx),   # right
                 (-sy,sx),   # left
-                #(normalize_component(sx+sy),normalize_component(sy-sx)), # right diagonal
-                #(normalize_component(sx-sy),normalize_component(sy+sx)) # left diagonal
+                (normalize_component(sx+sy),normalize_component(sy-sx)), # right diagonal
+                (normalize_component(sx-sy),normalize_component(sy+sx)) # left diagonal
             ]
 
             for new_dir in new_directions:
@@ -387,7 +402,7 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
             
 
         # Random branching. Branches in all 8 directions
-        elif random.randint(1,10000) <= random_branching_chance and (new_x, new_y) not in branches:
+        elif rand_int <= random_branching_chance and (new_x, new_y) not in branches:
             cnt2 += 1
             for i in range(-1, 2, 1):
                 for j in range(-1, 2, 1):
@@ -416,10 +431,11 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
         red.add((new_x, new_y)) # red coords
         
 
-def calculate_map_extension(max_distance, square_radius, extra_space):
-    print(square_radius, max_distance, extra_space)
-    map_square = square_radius * 2
-    map_size = max_distance * (1 + extra_space)     # 50% extra space
+def calculate_map_extension(max_distance, square_radius):
+    #print(square_radius, max_distance, extra_space)
+    map_square = 2*square_radius
+    map_size = 2*max_distance
+    print(f'{map_size=}')
 
     if map_size <= map_square:
         map_extension = 0
@@ -497,20 +513,20 @@ def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_poin
     concave_hull_y = compute_concave_hull_from_points(yellow_points, BranchingConfig.HULL_ALPHA.value)
     concave_hull_g = compute_concave_hull_from_points(green_points, BranchingConfig.HULL_ALPHA.value)
     
-    plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
-    plt.colorbar(label="Terreng: Vaskelig  ->  Lett")
-    if concave_hull_r:
-        x_r, y_r = get_polygon_coords_from_hull(concave_hull_r)
-        plt.fill(x_r, y_r, edgecolor='r',linewidth=3, fill=False)
-    if concave_hull_y:
-        x_y, y_y = get_polygon_coords_from_hull(concave_hull_y)
-        plt.fill(x_y, y_y, edgecolor='y',linewidth=3, fill=False)
-    if concave_hull_g:
-        x_g, y_g = get_polygon_coords_from_hull(concave_hull_g)
-        plt.fill(x_g, y_g, edgecolor='g',linewidth=3, fill=False)
-    plt.title("Branching result plot")
-    plt.axis('equal')
-    plt.show()
+    # plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
+    # plt.colorbar(label="Terreng: Vaskelig  ->  Lett")
+    # if concave_hull_r:
+    #     x_r, y_r = get_polygon_coords_from_hull(concave_hull_r)
+    #     plt.fill(x_r, y_r, edgecolor='r',linewidth=3, fill=False)
+    # if concave_hull_y:
+    #     x_y, y_y = get_polygon_coords_from_hull(concave_hull_y)
+    #     plt.fill(x_y, y_y, edgecolor='y',linewidth=3, fill=False)
+    # if concave_hull_g:
+    #     x_g, y_g = get_polygon_coords_from_hull(concave_hull_g)
+    #     plt.fill(x_g, y_g, edgecolor='g',linewidth=3, fill=False)
+    # plt.title("Branching result plot")
+    # plt.axis('equal')
+    # plt.show()
 
 
 
