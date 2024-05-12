@@ -453,9 +453,9 @@ if __name__ == "__main__":
         distance_per_index =  map_diameter / terrain_score_matrix.shape[0]  # Meters per index in the matrix
 
         # create map overlays for red, yellow and green areas
-        create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833")
-        create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", crs="EPSG:25833")
-        create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", crs="EPSG:25833")
+        create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", output_crs="EPSG:25833")
+        create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", output_crs="EPSG:25833")
+        create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", output_crs="EPSG:25833")
 
         # create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:4326")
         # create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", crs="EPSG:4326")

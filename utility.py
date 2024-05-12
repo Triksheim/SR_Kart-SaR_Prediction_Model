@@ -400,7 +400,7 @@ def get_polygon_coords_from_hull(hull):
 
 
 
-def create_polygon_map_overlay(matrix, coords, hull, color="red", crs="EPSG:25833", folder='output/overlays/overlay', search_id=0):
+def create_polygon_map_overlay(matrix, coords, hull, color="red", output_crs="EPSG:25833", folder='output/overlays/overlay', search_id=0):
             matrix_width, matrix_height = matrix.shape[0], matrix.shape[1]
             map_diameter = matrix_width * PreProcessConfig.REDUCTION_FACTOR.value  # Meters
             distance_per_index = map_diameter / matrix_width  # Meters per index in the matrix
@@ -427,14 +427,13 @@ def create_polygon_map_overlay(matrix, coords, hull, color="red", crs="EPSG:2583
             # map polygon to coordinate reference system
             base_crs = 'EPSG:25833'
             gdf = gpd.GeoDataFrame(index=[0], crs=base_crs, geometry=[hull_polygon])
-            gdf.to_crs(crs, inplace=True)
+            gdf.to_crs(output_crs, inplace=True)
             # save as GeoJSON
-            gdf.to_file(f'{folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.geojson', driver='GeoJSON')
-            print(f'Overlay saved to {folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.geojson')
-            # # save the polygon as a shapefile
-            # gdf.to_file(f'{folder}id{search_id}_{color}_{lat}_{lng}_EPSG{crs[5:]}.shp')
-
-            return hull_polygon
+            gdf.to_file(f'{folder}id{search_id}_{color}_{lat}_{lng}_EPSG{output_crs[5:]}.geojson', driver='GeoJSON')
+            print(f'Overlay saved to {folder}id{search_id}_{color}_{lat}_{lng}_EPSG{output_crs[5:]}.geojson')
+            
+            transformed_polygon = gdf.geometry.iloc[0]
+            return transformed_polygon
 
             
 
