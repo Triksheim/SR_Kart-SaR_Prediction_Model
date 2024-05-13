@@ -2,12 +2,14 @@ from web_model_functions import *
 import os
 
 
-search_id = 101
-lat = 68.443336
-lng = 17.527965
-d25 = 500
-d50 = 1000
-d75 = 1500
+search_id = 250
+# lat = 68.443336
+# lng = 17.527965
+lat = 68.44394111391593
+lng = 17.52490997314453
+d25 = 200
+d50 = 500
+d75 = 2500
 
 
 
@@ -17,6 +19,7 @@ base_dir_id = f'{base_dir_out}ID{search_id}/'
 os.makedirs(base_dir_id, exist_ok=False)
 os.makedirs(f'{base_dir_id}array/', exist_ok=False)
 os.makedirs(f'{base_dir_id}overlays/', exist_ok=False)
+os.makedirs(f'{base_dir_id}logs/', exist_ok=False)
 
 
 

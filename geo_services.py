@@ -44,45 +44,45 @@ def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, fo
     
 
 
-    with open(f'{folder}logfile.txt', 'a') as f:
+    with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f'Requesting terrain type data...')   
     # get the terrain type map (saves tiff file)
     get_terrain_type_map(map_squares_center_point, start_point, square_radius, folder, search_id)
-    with open(f'{folder}logfile.txt', 'a') as f:
+    with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f' done\n')
 
 
 
-    with open(f'{folder}logfile.txt', 'a') as f:
+    with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f'Requesting terrain height data...')
     # get the height map    (saves tiff file)
     get_height_map_geonorge(map_squares_center_point, start_point, square_radius, folder, search_id)
-    with open(f'{folder}logfile.txt', 'a') as f:
+    with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f' done\n')
 
 
-    with open(f'{folder}logfile.txt', 'a') as f:
+    with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f'Requesting trail data...')
     # get paths and trails map (saves numpy file)
     get_trail_map_geonorge(utm33_bbox, folder, reduction_factor, search_id)
     get_trail_map_osm(utm33_bbox, folder, reduction_factor, search_id)
-    with open(f'{folder}logfile.txt', 'a') as f:
+    with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f' done\n')
 
 
-    with open(f'{folder}logfile.txt', 'a') as f:
+    with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f'Requesting building data...')
     # get buildings map (saves numpy file)
     get_buildings_osm(utm33_bbox, folder, reduction_factor, search_id)
-    with open(f'{folder}logfile.txt', 'a') as f:
+    with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f' done\n')
 
 
-    with open(f'{folder}logfile.txt', 'a') as f:
+    with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f'Requesting railway data...')
     # get railways map (saves numpy file)
     get_railways_osm(utm33_bbox, folder, reduction_factor, search_id)
-    with open(f'{folder}logfile.txt', 'a') as f:
+    with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f' done\n')
     
     
