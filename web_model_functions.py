@@ -18,6 +18,10 @@ def collect_model_data(search_id, lat, lng, d25, d50, d75, base_dir):
     # Set base dir
     config = ModelConfig(base_dir)
 
+    logfile = f'{base_dir}logfile.txt'
+    with open(logfile, 'w') as f:
+        f.write(f'Logfile for search_id: {search_id}\n\n')
+
     get_model_data(search_id, lat, lng, d25, d50, d75, config)
 
 # Run from webserver
@@ -27,194 +31,166 @@ def start_model(search_id, lat, lng, d25, d50, d75, base_dir):
     return layers
 
 
-    # #get_model_data(search_id, lat, lng, d25, d50, d75)
-    # check_model_finished(search_id, lat, lng)
-    # print('Model finished')
-
-    # green_overlay_name = f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_green_{lat}_{lng}_EPSG4326'
-    # yellow_overlay_name = f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_yellow_{lat}_{lng}_EPSG4326'
-    # red_overlay_name = f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_red_{lat}_{lng}_EPSG4326'
-
-    # green_json = gpd.read_file(f'{green_overlay_name}.geojson')
-    # yellow_json = gpd.read_file(f'{yellow_overlay_name}.geojson')
-    # red_json = gpd.read_file(f'{red_overlay_name}.geojson')
-    
-    # green_shp = gpd.read_file(f'{green_overlay_name}.shp')
-    # yellow_shp = gpd.read_file(f'{yellow_overlay_name}.shp')
-    # red_shp = gpd.read_file(f'{red_overlay_name}.shp')
-
-    # green_polygon = green_shp.geometry.iloc[0]
-    # yellow_polygon = yellow_shp.geometry.iloc[0]
-    # red_polygon = red_shp.geometry.iloc[0]
-    
-    # # poly_gdf = gpd.GeoDataFrame({'geometry': [green_polygon, yellow_polygon, red_polygon],
-    # #                     'color': ['green', 'yellow', 'red']}, crs='EPSG:4326')
-
-    # # # Plotting
-    # # fig, ax = plt.subplots()
-    # # for color, group in poly_gdf.groupby('color'):
-    # #     group.plot(ax=ax, color=color, edgecolor='black')
-
-    # # plt.show()
-
-
-
-    # return (green_polygon,yellow_polygon,red_polygon), (green_json,yellow_json,red_json)
-
-    
-
-    
-    
-
-
-
 
 
 def get_model_data(search_id, lat, lng, d25, d50, d75, config):
-    max_range = d75
+    max_range = min(d75, 10000)
     map_extension = calculate_map_extension(max_range, config.SQUARE_RADIUS)
     print(f'{map_extension=}')
 
-    output_folder = config.BASE_DIR
 
-    get_all_geo_data(search_id, lat, lng, config.SQUARE_RADIUS, map_extension, output_folder)
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Collecting geo data...\n')
+        f.write(f'Distance paramters: {d25=}, {d50=}, {d75=}, {map_extension=}\n')
 
-    # # get geo data from API requests
-    # collect_args = (search_id, lat, lng, ModelConfig.SQUARE_RADIUS.value, map_extension, ModelConfig.OUTPUT_FOLDER.value)
-    # collect_thread = threading.Thread(target=get_all_geo_data, args=(collect_args))
-    # collect_thread.start()
-
-    # # Check if the data is available in db
-    # check_thread = threading.Thread(target=check_model_data, args=(search_id, lat, lng))
-    # check_thread.start()
+    start_time = time.perf_counter()
+    get_all_geo_data(search_id, lat, lng, config.SQUARE_RADIUS, map_extension, config.BASE_DIR, config.REDUCTION_FACTOR)
+    end_time = time.perf_counter()
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Data collection done - Time: {end_time-start_time:.2f}\n\n')
     
-# def check_model_finished(search_id, lat, lng):
-#     while True:
-#         time.sleep(10)
-#         try:
-#             if not os.path.exists(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_green_{lat}_{lng}_EPSG4326.geojson'):
-#                 # print os path
-#                 print(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_green_{lat}_{lng}_EPSG4326.geojson')
-                
-#                 #print(f'id{search_id}_green_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
-#                 continue
-#             if not os.path.exists(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_yellow_{lat}_{lng}_EPSG4326.geojson'):
-#                 #print(f'id{search_id}_yellow_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
-#                 continue
-#             if not os.path.exists(f'{ModelConfig.OVERLAY_FOLDER.value}id{search_id}_red_{lat}_{lng}_EPSG4326.geojson'):
-#                 #print(f'id{search_id}_red_{lat}_{lng}_EPSG4326.geojson not found in {ModelConfig.OVERLAY_FOLDER.value}')
-#                 continue
-
-
-#             # If all files are found, break the loop
-#             print(f'Overlay files found for id: {search_id}')
-#             break
-
-#         except:
-#             print(f'Error checking overlay files for id: {search_id}')
-#             time.sleep(10)
-
-# def check_model_data(search_id, lat, lng):
-#     while True:
-#         try:
-#             # Check if the data is available for search_id
-#             time.sleep(10)
-            
-#             if not os.path.exists(f'{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_terrain_composite.tif'):
-#                 print(f'id{search_id}_{lat}_{lng}_terrain_composite.tif not found in {ModelConfig.OUTPUT_FOLDER.value}')
-#                 continue
-#             if not os.path.exists(f'{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{lat}_{lng}_height_composite.tif'):
-#                 print(f'id{search_id}_{lat}_{lng}_height_composite.tif not found in {ModelConfig.OUTPUT_FOLDER.value}')
-#                 continue
-#             if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_gn_trail_data.npy'):
-#                 print(f'id{search_id}_gn_trail_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
-#                 continue
-#             if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_trail_data.npy'):
-#                 print(f'id{search_id}_osm_trail_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
-#                 continue
-#             if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_building_data.npy'):
-#                 print(f'id{search_id}_osm_building_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
-#                 continue
-#             if not os.path.exists(f'{ModelConfig.ARRAY_FOLDER.value}id{search_id}_osm_railway_data.npy'):
-#                 print(f'id{search_id}_osm_railway_data.npy not found in {ModelConfig.ARRAY_FOLDER.value}')
-#                 continue
-
-#             # If all files are found, break the loop
-#             print(f'All files found for id: {search_id}')
-#             break
-
-#         except:
-#             print(f'Error checking model data for id: {search_id}')
-#             time.sleep(10)
-
-#     # Process the data
-#     process_model_data(search_id, lat, lng)
 
 
 
 def process_model_data(search_id, lat, lng, d25, d50, d75, config):
-
     print(f'Processing model data for id: {search_id}')
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Processing model data...\n')
+
 
     # Rasterize and encode terrain data
     start_time = time.perf_counter()
     # Create arrays from tiff files
+
+
+
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Creating height array...')
     create_height_array(f'{config.BASE_DIR}id{search_id}_{lat}_{lng}_height_composite.tif', config.ARRAY_FOLDER,
-                         search_id)
+                        config.REDUCTION_FACTOR, search_id)
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f' done\n')
+    
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Creating terrain RGB array...')
     create_terrain_RGB_array(f'{config.BASE_DIR}id{search_id}_{lat}_{lng}_terrain_composite.tif',
-                              config.ARRAY_FOLDER, search_id)
+                            config.ARRAY_FOLDER,config.REDUCTION_FACTOR, search_id)
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f' done\n')
+    
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Encoding terrain types...')
     # Encode terrain type values
     terrain_rgb_file = f'{config.ARRAY_FOLDER}id{search_id}_terrain_RGB_matrix.npy'
     terrain_encoding(config.TERRAIN_TYPE, config.TERRAIN_RGB, terrain_rgb_file,
                       config.ARRAY_FOLDER, search_id)
-    end_time = time.perf_counter()
-    print(f"Encoding took {end_time - start_time} seconds")
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f' done\n')
 
+
+
+    
+
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Adding railways...')
+    # Add railways
+    #print("Adding railways to terrain data...")
+    terrain_type_matrix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_type_matrix.npy')
+    railway_files = [f'id{search_id}_osm_railway_data.npy']
+    add_railway_data_to_terrain(terrain_type_matrix, railway_files, config.ARRAY_FOLDER,
+                                 config.RAILWAY, search_id)
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f' done.\n')
+
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Adding buildings...')
+    # Add buildings
+    #rint("Adding buildings to terrain data...")
+    terrain_type_matrix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_type_matrix.npy')
+    building_files = [f'id{search_id}_osm_building_data.npy']
+    add_building_data_to_terrain(terrain_type_matrix, building_files, config.ARRAY_FOLDER,
+                                  config.BUILDING, search_id)
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f' done\n')
+
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Adding trails...')
     # Add trails
-    print("Adding trails to terrain data...")
-    terrain_type_matrix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_data_encoded.npy')
+    #print("Adding trails to terrain data...")
+    terrain_type_matrix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_type_matrix.npy')
     trail_file_gn = f'id{search_id}_gn_trail_data.npy'
     trail_file_osm = f'id{search_id}_osm_trail_data.npy'
     trail_files = [trail_file_gn, trail_file_osm]
     add_trails_data_to_terrain(terrain_type_matrix, trail_files, config.ARRAY_FOLDER,
                                 config.TRAIL, search_id)
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f' done\n')
 
-    # Add buildings
-    print("Adding buildings to terrain data...")
-    building_files = [f'id{search_id}_osm_building_data.npy']
-    add_building_data_to_terrain(terrain_type_matrix, building_files, config.ARRAY_FOLDER,
-                                  config.BUILDING, search_id)
 
-    # Add railways
-    print("Adding railways to terrain data...")
-    railway_files = [f'id{search_id}_osm_railway_data.npy']
-    add_railway_data_to_terrain(terrain_type_matrix, railway_files, config.ARRAY_FOLDER,
-                                 config.RAILWAY, search_id)
+    
 
-    # Reduce resolution
-    print("Reducing resolution...")
-    terrain_type_matrix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_type_matrix.npy')
-    terrain_type_matrix = reduce_resolution(terrain_type_matrix, config.REDUCTION_FACTOR)
-    height_matrix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_height_matrix.npy')
-    height_matrix = reduce_resolution(height_matrix, config.REDUCTION_FACTOR)
 
+    
+
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Calculating slopes...')
     # Calculate slopes
     print("Calculating slopes...")
-    slope_matrix = create_slope_matrix(height_matrix,config.NORMALIZE_CAP, config.ARRAY_FOLDER, search_id)
+    height_matrix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_height_matrix.npy')
+    slope_matrix = create_slope_matrix(height_matrix, config.NORMALIZE_CAP, config.SQUARE_FACTOR, config.ARRAY_FOLDER, search_id)
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f' done\n')
 
+
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Creating terrain score matrix...')
     # Combine terrain and slope matrix
     print("Combining terrain and slope matrix...")
+    terrain_type_matrix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_type_matrix.npy')
     terrain_score_marix = combine_terrain_type_and_slope(terrain_type_matrix, slope_matrix, config.COMBINATION_METHORD,
                                     config.FILTER_SIZE, config.ARRAY_FOLDER, search_id)
-    
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f' done\n')
+    end_time = time.perf_counter()
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Data processing done - Time: {end_time-start_time:.2f}\n\n')
+        
+
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Simulation started...\n')
     # Branching simulation
     print("Branching simulation started...")
+    start_time = time.perf_counter()
     red_points, yellow_points, green_points = branching_simulation(terrain_score_marix, search_id, d25, d50, d75, config)
+    end_time = time.perf_counter()
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Simulation done - Time: {end_time-start_time:.2f}\n\n')
 
+
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'Creating map overlays...')
     # Calcuate polygons based on simulation
     print("Creating map overlays...")
     start_coords = (lat, lng)
     (layer_25,layer_50,layer_75) = create_map_layer(terrain_score_marix, start_coords, red_points, yellow_points, green_points, config.OVERLAY_FOLDER, search_id, config)
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f' done\n\n')
+
+    with open(f'{config.BASE_DIR}logfile.txt', 'a') as f:
+        f.write(f'SAR model finished\n\n')
+
 
     return (layer_25,layer_50,layer_75)
     

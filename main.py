@@ -20,10 +20,10 @@ if __name__ == "__main__":
     arrays_folder = f'{output_folder}array/'
 
     # Set to visulize all data in pyplots or set individual plots below
-    plot = False
+    plot = True
 
     # Set to collect data from GeoNorge and OSM
-    collect = False
+    collect = True
     plot_collect = False
 
     ## preprocessing functions start ## -----------------------------------------------------------
@@ -86,18 +86,19 @@ if __name__ == "__main__":
     # Reduce resolution of terrain and height data
     reduced_resolution = run_all_pp or False
     plot_reduced_resolution = False
-    reduction_factor = 2 if city else 5                  # factor for reducing resolution (in both x and y direction)
+    reduction_factor = 5                  # factor for reducing resolution (in both x and y direction)
     
     # Calculate steepness of the terrain
     calculate_steepness = run_all_pp or False
     plot_steepness = False
     normalization_cap = 10                  # cap steepness value for normalization
+    square_factor = 2
 
     # Combine terrain and steepness matrixes and perform filtering
     combine_matrix = run_all_pp or False
     plot_combined_matrix = False
-    combination_method = "square"           # method for combining matrixes (mean, multiply, square)
-    filter_matrix = False if city else True     # apply max filter to combined matrix
+    combination_method = "multiply"           # method for combining matrixes (mean, multiply, square)
+    filter_matrix = False     # apply max filter to combined matrix
     filter_size = 3                         # nxn filter size
     
     ## preprocessing functions end ## -----------------------------------------------------------
@@ -113,15 +114,16 @@ if __name__ == "__main__":
     plot_branching = True
     scatter_endpoints = False                          # scatter endpoints in plot
     branching_sim_iterations = 2                    # number of iterations for each direction (iter * 8)
-    b_range_factor = 1                 # factor for "max" travel distance                
+    b_range_factor = 1.25                 # factor for "max" travel distance                
     hull_alpha = 15                                        # "concavity" of the search area hull
     #ring_25 = 20                                            # percentage of max distance for 25% ring
     #ring_50 = 50                                            # percentage of max distance for 50% ring
-    worse_terrain_threshold = 0.5 if city else 0.3           # threshold for branching when worse terrain (0-1)
+    worse_terrain_threshold = 0.3                           # threshold for branching when worse terrain (0-1)
     random_branching_chance = 10                             # chance of random branching (n/100.000)
-    d1 = 600
-    d2 = 1800
-    d3 = 3200
+    obstacle_threshold = 0.1                                # threshold for obstacle detection (0-1)
+    d1 = 400
+    d2 = 800
+    d3 = 1500
 
     # Create map overlay layer with CRS from branching simulation results
     create_map_overlay = True if branching_sim else False
@@ -142,8 +144,8 @@ if __name__ == "__main__":
     # start_lat = 68.443336
     # start_lng = 17.527965
 
-    start_lat = 68.44515518547429
-    start_lng = 17.53628253936768
+    start_lat = 68.443336
+    start_lng = 17.527965
     
 
     #68.4383953706666, 17.427225974564415 narvik sentrum
@@ -161,22 +163,20 @@ if __name__ == "__main__":
     if collect:
         print("Data collection started...")
         start_time_collect = time.perf_counter()
-        get_all_geo_data(search_id, start_lat, start_lng, square_radius, map_extention, output_folder)
+        get_all_geo_data(search_id, start_lat, start_lng, square_radius, map_extention, output_folder, reduction_factor)
         end_time_collect = time.perf_counter()
         print(f"Collecting data took {end_time_collect - start_time_collect} seconds")
 
-        create_numpy_arrays_from_tiff(search_id, start_lat, start_lng, tiff_folder=output_folder, output_folder=arrays_folder)
+        #create_numpy_arrays_from_tiff(search_id, start_lat, start_lng, tiff_folder=output_folder, output_folder=arrays_folder)
 
-        create_height_array(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{start_lat}_{start_lng}_height_composite.tif',
-                         ModelConfig.ARRAY_FOLDER.value)
-        create_terrain_RGB_array(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{start_lat}_{start_lng}_terrain_composite.tif',
-                              ModelConfig.ARRAY_FOLDER.value)
+        # create_height_array(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{start_lat}_{start_lng}_height_composite.tif',
+        #                  ModelConfig.ARRAY_FOLDER.value)
+        # create_terrain_RGB_array(f'./{ModelConfig.OUTPUT_FOLDER.value}id{search_id}_{start_lat}_{start_lng}_terrain_composite.tif',
+        #                       ModelConfig.ARRAY_FOLDER.value)
 
 
         if plot or plot_collect:
 
-            height_matrix = np.load(f'{arrays_folder}id{search_id}_height_data.npy')
-            plot_array(height_matrix, cmap='Greys', label="moh", title="Høydedata")
 
             try:
                 trail_data = np.load(f'{arrays_folder}id{search_id}_gn_trail_data.npy')
@@ -196,75 +196,77 @@ if __name__ == "__main__":
 
 
     if encode:
+        print("Encoding data...")
+        start_time = time.perf_counter()
+        
+        create_height_array(f'{output_folder}id{search_id}_{start_lat}_{start_lng}_height_composite.tif',
+                         arrays_folder)
+        create_terrain_RGB_array(f'{output_folder}id{search_id}_{start_lat}_{start_lng}_terrain_composite.tif',
+                              arrays_folder)
+
+
         terrain_rgb_file_path = f'{arrays_folder}id{search_id}_terrain_RGB_matrix.npy'
         
-        start_time = time.perf_counter()
+        #start_time = time.perf_counter()
         terrain_encoding(terrain_type_encoding, terrain_rgb_values, terrain_rgb_file_path, arrays_folder)
         end_time = time.perf_counter()
         print(f"Encoding took {end_time - start_time} seconds")
 
-        if plot or plot_encoded:
-            terrain_type_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_data_encoded.npy')
+        if plot:
+            height_matrix = np.load(f'{arrays_folder}id{search_id}_height_matrix.npy')
+            plot_array(height_matrix, cmap='Greys', label="moh", title="Høydedata")
+            terrain_type_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_type_matrix.npy')
             plot_array(terrain_type_matrix, cmap='terrain', label="Verdi(0-1)", title="Arealtype")
     
 
-    if add_trails:
-        print("Adding trails to terrain data...")
-        terrain_type_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_data_encoded.npy')
-        trail_file_gn = f'id{search_id}_gn_trail_data.npy'
-        trail_file_osm = f'id{search_id}_osm_trail_data.npy'
-        trail_files = [trail_file_gn, trail_file_osm]
-        add_trails_data_to_terrain(terrain_type_matrix, trail_files, arrays_folder)
+    if add_railways:
+        print("Adding railways to terrain data...")
+        terrain_type_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_type_matrix.npy')
 
-        if plot:
-            plot_array(terrain_type_matrix, cmap='terrain', label="Verdi(0-1)", title="Arealtype med stier")
+        railway_file_osm = f'id{search_id}_osm_railway_data.npy'
+        railway_files = [railway_file_osm]
+        add_railway_data_to_terrain(terrain_type_matrix, railway_files, arrays_folder)
+
+        if plot or True:
+            plot_array(terrain_type_matrix, cmap='terrain', label="", title="Arealtype med jernbane")
 
 
     if add_buildings:
         print("Adding buildings to terrain data...")
         terrain_type_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_type_matrix.npy')
+
         building_file_osm = f'id{search_id}_osm_building_data.npy'
         building_files = [building_file_osm]
         add_building_data_to_terrain(terrain_type_matrix, building_files, arrays_folder)
 
         if plot:
             plot_array(terrain_type_matrix, cmap='terrain', label="", title="Arealtype med bygninger")
-    
 
-    if add_railways:
-        print("Adding railways to terrain data...")
+
+    if add_trails:
+        print("Adding trails to terrain data...")
         terrain_type_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_type_matrix.npy')
-        railway_file_osm = f'id{search_id}_osm_railway_data.npy'
-        railway_files = [railway_file_osm]
-        add_railway_data_to_terrain(terrain_type_matrix, railway_files, arrays_folder)
 
-        if plot:
-            plot_array(terrain_type_matrix, cmap='terrain', label="", title="Arealtype med jernbane")
+        trail_file_gn = f'id{search_id}_gn_trail_data.npy'
+        trail_file_osm = f'id{search_id}_osm_trail_data.npy'
+        trail_files = [trail_file_gn, trail_file_osm]
+        add_trails_data_to_terrain(terrain_type_matrix, trail_files, arrays_folder)
+
+        if plot or True:
+            plot_array(terrain_type_matrix, cmap='terrain', label="Verdi(0-1)", title="Arealtype med stier")
 
 
-    if reduced_resolution:
-        terrain_type_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_type_matrix.npy')
-        terrain_type_matrix = reduce_resolution(terrain_type_matrix, reduction_factor, method="mean")
-        terrain_type_matrix[0][0] = 1  # assure max range of 1 for better visualization in plots
-
-        height_matrix = np.load(f'{arrays_folder}id{search_id}_height_matrix.npy')
-        height_matrix = reduce_resolution(height_matrix, reduction_factor, method="mean")
-
-        if plot_reduced_resolution:
-            plot_array(terrain_type_matrix, cmap='terrain', label="Verdi(0-1)", title="Arealtype nedskalert")
-            plot_array(height_matrix, cmap='Greys', label="moh", title="Høydedata nedskalert")
 
 
     if calculate_steepness:
-        if not reduced_resolution:
-            height_matrix = np.load(f'{arrays_folder}id{search_id}_height_matrix.npy')
+        height_matrix = np.load(f'{arrays_folder}id{search_id}_height_matrix.npy')
             
         steepness_matrix = calc_steepness(height_matrix)
         steepness_matrix[steepness_matrix > normalization_cap] = normalization_cap        # cap steepness values
 
         norm_steepness_matrix = steepness_matrix / normalization_cap                      # normalize values to 0-1
         inv_norm_steepness_matrix = 1 - norm_steepness_matrix                             # invert values
-        inv_norm_steepness_matrix = inv_norm_steepness_matrix ** 2                        # square values for better separation at extremes
+        inv_norm_steepness_matrix = inv_norm_steepness_matrix ** square_factor                       # square values for better separation at extremes
         
         #inv_norm_steepness_matrix[inv_norm_steepness_matrix < 0.1] = 0                    # set values below 0.1 to 0
 
@@ -279,14 +281,13 @@ if __name__ == "__main__":
 
 
     if combine_matrix:
-        if not reduced_resolution:
-            terrain_type_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_type_matrix.npy')    # terrain type with trails and buildings
-        if not calculate_steepness:
-            inv_norm_steepness_matrix = np.load(f'{arrays_folder}id{search_id}_normalized_steepness_matrix.npy')
+
+        terrain_type_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_type_matrix.npy')    # terrain type with trails and buildings
+        inv_norm_steepness_matrix = np.load(f'{arrays_folder}id{search_id}_normalized_steepness_matrix.npy')
 
         inv_norm_steepness_matrix[terrain_type_matrix == 1] = 1             # set steepness to 1 where there is a trail (ignore steepness)
-        inv_norm_steepness_matrix[inv_norm_steepness_matrix <= 0.1] = 0     # steepness values below 0.1 are set to 0
-        terrain_type_matrix[terrain_type_matrix <= 0.05] = 0                # set terrain values below 0.05 to 0
+        #inv_norm_steepness_matrix[inv_norm_steepness_matrix <= 0.1] = 0     # steepness values below 0.1 are set to 0
+        #terrain_type_matrix[terrain_type_matrix <= 0.05] = 0                # set terrain values below 0.05 to 0
 
         combined_matrix = combine_matrixes(terrain_type_matrix, inv_norm_steepness_matrix, combination_method)
 
@@ -359,6 +360,9 @@ if __name__ == "__main__":
 
     if branching_sim:
         
+        # # Calibration testing
+        # terrain_score_matrix = np.full((600,600), 0.8)
+
         terrain_score_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_score_matrix.npy')
         
         radius = terrain_score_matrix.shape[0] / 2
@@ -390,7 +394,7 @@ if __name__ == "__main__":
                         curr_dir += 1
                         branches = set() # reset branches
                         sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
-                        branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_energy, max_energy, sets, d25, d50, worse_terrain_threshold, random_branching_chance, 0)
+                        branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_energy, max_energy, sets, d25, d50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
                         
         end_time = time.perf_counter()
 

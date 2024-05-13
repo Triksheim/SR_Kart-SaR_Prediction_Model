@@ -8,17 +8,16 @@ import requests
 from xml.etree import ElementTree as ET
 from io import BytesIO
 import time
-import matplotlib.pyplot as plt
 from rasterio.transform import from_origin
 from rasterio.features import rasterize
 import numpy as np
 import geopandas as gpd
 import pandas as pd
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, folder="output/"):
+def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, folder="output/", reduction_factor=5):
     """
     Retrieves and saves various mgeo data based on the given latitude and longitude coordinates.
 
@@ -44,35 +43,49 @@ def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, fo
 
     
 
+
+    with open(f'{folder}logfile.txt', 'a') as f:
+        f.write(f'Requesting terrain type data...')   
     # get the terrain type map (saves tiff file)
     get_terrain_type_map(map_squares_center_point, start_point, square_radius, folder, search_id)
+    with open(f'{folder}logfile.txt', 'a') as f:
+        f.write(f' done\n')
 
+
+
+    with open(f'{folder}logfile.txt', 'a') as f:
+        f.write(f'Requesting terrain height data...')
     # get the height map    (saves tiff file)
     get_height_map_geonorge(map_squares_center_point, start_point, square_radius, folder, search_id)
+    with open(f'{folder}logfile.txt', 'a') as f:
+        f.write(f' done\n')
 
+
+    with open(f'{folder}logfile.txt', 'a') as f:
+        f.write(f'Requesting trail data...')
     # get paths and trails map (saves numpy file)
-    get_trail_map_geonorge(utm33_bbox, folder, search_id)
-    get_trail_map_osm(utm33_bbox, folder, search_id)
+    get_trail_map_geonorge(utm33_bbox, folder, reduction_factor, search_id)
+    get_trail_map_osm(utm33_bbox, folder, reduction_factor, search_id)
+    with open(f'{folder}logfile.txt', 'a') as f:
+        f.write(f' done\n')
 
+
+    with open(f'{folder}logfile.txt', 'a') as f:
+        f.write(f'Requesting building data...')
     # get buildings map (saves numpy file)
-    get_buildings_osm(utm33_bbox, folder, search_id)
+    get_buildings_osm(utm33_bbox, folder, reduction_factor, search_id)
+    with open(f'{folder}logfile.txt', 'a') as f:
+        f.write(f' done\n')
 
+
+    with open(f'{folder}logfile.txt', 'a') as f:
+        f.write(f'Requesting railway data...')
     # get railways map (saves numpy file)
-    get_railways_osm(utm33_bbox, folder, search_id)
+    get_railways_osm(utm33_bbox, folder, reduction_factor, search_id)
+    with open(f'{folder}logfile.txt', 'a') as f:
+        f.write(f' done\n')
     
-    # # convert height tiff to numpy array and save to file
-    # create_height_array(f'{folder}id{search_id}_{start_point[0]}_{start_point[1]}_height_composite.tif')
-
-    # # convert terrain tiff to 3d numpy array with RGB values and save to file
-    # create_terrain_RGB_array(f'{folder}id{search_id}_{start_point[0]}_{start_point[1]}_terrain_composite.tif')
-
-    # DEBUG
-    # get railways map (saves numpy file)
-    # get_railways_osm(utm33_bbox, folder)
-    # # get the height map    (saves tiff file)
-    # get_height_map_geonorge(map_squares_center_point, start_point, square_radius, folder)
-    # # convert height tiff to numpy array and save to file
-    # create_height_array(f'{folder}{start_point[0]}_{start_point[1]}_height_composite.tif')
+    
 
 
 
@@ -194,12 +207,10 @@ def wcs_request(url, params, retry_limit=15, min_size_limit=100000, n=0):
             if 'multipart' in content_type: # Check if the response is multipart xml
                 
                 
-                if len(response.content) < min_size_limit and retry_count < 5:
+                if len(response.content) < min_size_limit and retry_count < 10:
                     print(f'Error Request {n+1}: Insufficient data. {len(response.content)}/{min_size_limit} bytes')
-                elif len(response.content) < min_size_limit/2 and retry_count < 10:
+                elif len(response.content) < min_size_limit/2 and retry_count < 14:
                     print(f'Error Request {n+1}: Insufficient data. {len(response.content)}/{min_size_limit/2} bytes')
-                elif len(response.content) < min_size_limit/4 and retry_count < 14:
-                    print(f'Error Request {n+1}: Insufficient data. {len(response.content)}/{min_size_limit/4} bytes')
 
                 else:
                     print(f'Request {n+1} successful. Count: {len(response.content)} bytes')
@@ -225,7 +236,7 @@ def wcs_request(url, params, retry_limit=15, min_size_limit=100000, n=0):
 
 
 
-def get_trail_map_geonorge(bbox, folder="output/", search_id=0):
+def get_trail_map_geonorge(bbox, folder="output/", reduction_factor=5,  search_id=0):
     """
     Retrieves trail data within the specified bounding box and saves the trail map as an image and a NumPy array.
 
@@ -290,14 +301,18 @@ def get_trail_map_geonorge(bbox, folder="output/", search_id=0):
             transform=transform,
             all_touched=True
         )
-        
+
+    # Padding trails    
+    raster = matrix_value_padding(raster, 1, 10)
+    # Downsample the raster 
+    raster = downsample_2d_array(raster, reduction_factor)
 
     np.save(f'{folder}array/id{search_id}_gn_trail_data.npy', raster)
     print(f'Trail data np array saved to {folder}array/{search_id}_gn_trail_data.npy')
 
 
 
-def get_trail_map_osm(utm33_bbox, folder="output/", search_id=0):
+def get_trail_map_osm(utm33_bbox, folder="output/", reduction_factor=5, search_id=0):
     """
     Retrieves hiking trail data from OpenStreetMap within the specified bounding box
     and saves the trail map as an image and a NumPy array.
@@ -387,12 +402,17 @@ def get_trail_map_osm(utm33_bbox, folder="output/", search_id=0):
     else:
         print("Warning: No trails were rasterized. The raster is empty.")
 
+    # Padding trails
+    raster = matrix_value_padding(raster, 1, 10)
+    # Downsample the raster
+    raster = downsample_2d_array(raster, reduction_factor)
+
     # Save the raster as a NumPy array
     np.save(f'{folder}array/id{search_id}_osm_trail_data.npy', raster)
     print(f'Trail data NumPy array saved to {folder}array/osm_trail_data.npy')
 
 
-def get_buildings_osm(utm33_bbox, folder="output/", search_id=0):
+def get_buildings_osm(utm33_bbox, folder="output/", reduction_factor=5, search_id=0):
     # Convert the bounding box to WGS84 for overpass API
     min_wsg = transform_coords_crs(utm33_bbox[0], utm33_bbox[1], 25833, 4326)
     max_wsg = transform_coords_crs(utm33_bbox[2], utm33_bbox[3], 25833, 4326)
@@ -468,12 +488,18 @@ def get_buildings_osm(utm33_bbox, folder="output/", search_id=0):
     else:
         print("Warning: No buildings were rasterized. The raster is empty.")
 
+
+    # Padding buildings
+    raster = matrix_value_padding(raster, 1, 2)
+    # Downsample the raster
+    raster = downsample_2d_array(raster, reduction_factor)
+
     # Save the raster as a NumPy array
     np.save(f'{folder}array/id{search_id}_osm_building_data.npy', raster)
     print(f'Building data NumPy array saved to {folder}array/osm_buildings_data.npy')
 
 
-def get_railways_osm(utm33_bbox, folder="output/", search_id=0):
+def get_railways_osm(utm33_bbox, folder="output/", reduction_factor=5, search_id=0):
     # Convert the bounding box to WGS84 for overpass API
     min_wsg = transform_coords_crs(utm33_bbox[0], utm33_bbox[1], 25833, 4326)
     max_wsg = transform_coords_crs(utm33_bbox[2], utm33_bbox[3], 25833, 4326)
@@ -493,10 +519,13 @@ def get_railways_osm(utm33_bbox, folder="output/", search_id=0):
     
         // Remove ways that intersect with any of the crossing nodes
         (._; - way(around.crossings:0););
+
         (._;>;);
         out body;
 
     """
+
+
 
     road_query = f"""
         [out:json];
@@ -558,6 +587,11 @@ def get_railways_osm(utm33_bbox, folder="output/", search_id=0):
         print("Railways rasterized successfully.")
     else:
         print("Warning: No railways were rasterized. The raster is empty.")
+
+    # Padding railways
+    railway_raster = matrix_value_padding(railway_raster, 1, 8)
+    # Downsample the raster
+    railway_raster = downsample_2d_array(railway_raster, reduction_factor)
 
     # Save the raster as a NumPy array
     np.save(f'{folder}array/id{search_id}_osm_railway_data.npy', railway_raster)

@@ -12,14 +12,14 @@ import time
 from scipy.ndimage import maximum_filter
 
 #############################################################
-""" For debugging branching simulation """
-cnt = 0
-cnt2 = 0
-cnt3 = 0
-cnt4 = 0
-cnt_kill_1 = 0
-cnt_kill_2 = 0
-cnt_kill_3 = 0
+# """ For debugging branching simulation """
+# cnt = 0
+# cnt2 = 0
+# cnt3 = 0
+# cnt4 = 0
+# cnt_kill_1 = 0
+# cnt_kill_2 = 0
+# cnt_kill_3 = 0
 def debug_stats_print():
     global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
     print(f'1:{cnt_kill_1},2:{cnt_kill_2},3:{cnt_kill_3}, Total:{cnt_kill_1+cnt_kill_2+cnt_kill_3} Killed branches')
@@ -39,6 +39,10 @@ def terrain_encoding(terrain_type_encoding, terrain_rgb_values, terrain_filepath
         return
 
     print(f'Color analysis terrain encoding started...')
+
+    # # Downsample the RGB data to reduce processing time
+    # terrain_rgb_data_3d_reduced = downsample_rgb_image(terrain_rgb_data_3d, downsample_factor)
+
     print(f'{terrain_rgb_data_3d.shape[1]}x{terrain_rgb_data_3d.shape[2]} pixels to process.')
 
     # Transpose the 3D array so that color channels are last
@@ -68,8 +72,12 @@ def terrain_encoding(terrain_type_encoding, terrain_rgb_values, terrain_filepath
     matrix_value_padding(encoded_terrain, swamp_val, 1, offset)
     
     encoded_terrain[0][0] = 1 # To assure that the min value is atleast 1 for better visual when plotting 
-    np.save(f'{folder}id{search_id}_terrain_data_encoded.npy', encoded_terrain)
-    print(f'Encoded terrain data np array saved to {folder}terrain_data_encoded.npy')
+
+    # pad all roads and trails
+    encoded_terrain = matrix_value_padding(encoded_terrain, terrain_type_encoding["Sti og vei"], 1)
+
+    np.save(f'{folder}id{search_id}_terrain_type_matrix.npy', encoded_terrain)
+    print(f'Encoded terrain data np array saved to {folder}id{search_id}_terrain_type_matrix.npy')
 
 
 
@@ -78,29 +86,30 @@ def terrain_encoding(terrain_type_encoding, terrain_rgb_values, terrain_filepath
 
 def add_trails_data_to_terrain(terrain_data, trail_files=[],folder="output/array/", trail_value=1, search_id=0):
         trails_added = False
-        
-        terrain_data = matrix_value_padding(terrain_data, trail_value,  3)   # road padding
 
         for trail_file in trail_files:
             try:
                 trails = np.load(f'{folder}{trail_file}')
-
-                trails = matrix_value_padding(trails, trail_value, 5) # trail padding
-
                 terrain_data[trails == 1] = trail_value
                 trails_added = True
             except:
                 print(f'No trail data found in {folder}{trail_file}')
         
         if trails_added:
-            #neighbour_offset = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
-            #steps = 8
-            #terrain_data = set_neighbours(terrain_data, trail_value, neighbour_offset, 3)   # trail and road padding
-            np.save(f'{folder}id{search_id}_terrain_type_matrix.npy', terrain_data)
-            print(f'Trails added to terrain data and saved to {folder}id{search_id}_terrain_type_matrix.npy')
+            try:
+                np.save(f'{folder}id{search_id}_terrain_type_matrix.npy', terrain_data)
+                print(f'Trails added to terrain data and saved to {folder}id{search_id}_terrain_type_matrix.npy')
+            except PermissionError: # if file is open
+                while True:
+                    try:
+                        np.save(f'{folder}id{search_id}_terrain_type_matrix.npy', terrain_data)
+                        print(f'Trails added to terrain data and saved to {folder}id{search_id}_terrain_type_matrix.npy')
+                        break
+                    except PermissionError:
+                        time.sleep(1)
         else:
             print(f'No trail data added to terrain data.')
-            #np.save(f'{folder}terrain_type_matrix.npy', terrain_data)
+            #np.save(f'{folder}id{search_id}_terrain_type_matrix.npy', terrain_data)
 
 
 def add_building_data_to_terrain(terrain_data, building_files=[],folder="output/array/", building_value=0, search_id=0):
@@ -108,9 +117,6 @@ def add_building_data_to_terrain(terrain_data, building_files=[],folder="output/
         for building_file in building_files:
             try:
                 buildings = np.load(f'{folder}{building_file}')
-
-                buildings = matrix_value_padding(buildings, 1, 6) # building padding
-
                 terrain_data[buildings == 1] = building_value
                 buildings_added = True
             except:
@@ -123,8 +129,8 @@ def add_building_data_to_terrain(terrain_data, building_files=[],folder="output/
             except PermissionError: # if file is open
                 while True:
                     try:
-                        np.save(f'{folder}terrain_type_matrix.npy', terrain_data)
-                        print(f'Buildings added to terrain data and saved to {folder}terrain_type_matrix.npy')
+                        np.save(f'{folder}id{search_id}_terrain_type_matrix.npy', terrain_data)
+                        print(f'Buildings added to terrain data and saved to {folder}id{search_id}_terrain_type_matrix.npy')
                         break
                     except PermissionError:
                         time.sleep(1)
@@ -138,9 +144,6 @@ def add_railway_data_to_terrain(terrain_data, railway_files=[],folder="output/ar
         for railway_file in railway_files:
             try:
                 railway = np.load(f'{folder}{railway_file}')
-
-                railway = matrix_value_padding(railway, 1, 5) # padding
-
                 terrain_data[railway == 1] = railway_value
                 railway_added = True
             except:
@@ -149,7 +152,7 @@ def add_railway_data_to_terrain(terrain_data, railway_files=[],folder="output/ar
         if railway_added:
             try:
                 np.save(f'{folder}id{search_id}_terrain_type_matrix.npy', terrain_data)
-                print(f'Railways added to terrain data and saved to {folder}terrain_type_matrix.npy')
+                print(f'Railways added to terrain data and saved to {folder}id{search_id}_terrain_type_matrix.npy')
             except PermissionError: # if file is open
                 while True:
                     try:
@@ -172,25 +175,19 @@ def calc_steepness(height_matrix):
     return steepness_matrix
 
 
-def reduce_resolution(data, factor=10, method="mean"):
-    if method == "mean":
-        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).mean(axis=1).mean(axis=2)
-    elif method == "max":
-        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).max(axis=1).max(axis=2)
-    elif method == "min":
-        return data.reshape(data.shape[0]//factor, factor, data.shape[1]//factor, factor).mean(axis=1).min(axis=2)
 
 
 
 def combine_terrain_type_and_slope(terrain_type_matrix, slope_matrix, method="mean", filter_size=3, folder="output/array/", search_id=0):
     slope_matrix[terrain_type_matrix == 1] = 1
-    terrain_type_matrix[terrain_type_matrix <= 0.05] = 0
-    slope_matrix[slope_matrix <= 0.1] = 0
+    #terrain_type_matrix[terrain_type_matrix <= 0.05] = 0
+    #slope_matrix[slope_matrix <= 0.1] = 0
     combined_matrix = combine_matrixes(terrain_type_matrix, slope_matrix, method)
-    combined_matrix_filtered = maximum_filter(combined_matrix, size=filter_size)
+    #combined_matrix_filtered = maximum_filter(combined_matrix, size=filter_size)
+    
     print(f"Combined terrain score matrix saved to: {folder}{search_id}_terrain_score_matrix.npy")
-    np.save(f'{folder}id{search_id}_terrain_score_matrix.npy', combined_matrix_filtered)
-    return combined_matrix_filtered
+    np.save(f'{folder}id{search_id}_terrain_score_matrix.npy', combined_matrix)
+    return combined_matrix
 
 
 def combine_matrixes(terrain_type, slope, method="mean"):
@@ -259,21 +256,22 @@ def calc_travel_distance(matrix, energy, center, end_x, end_y, step_limit=9999):
     
     
 
-def movement(matrix, start_idx, move_dir):
+def movement(matrix, start_idx, move_dir, obstacle_threshold):
     """ Returns new position and energy cost for the movement.
         Used in branching_movement.
     """
-    global cnt
-    cnt += 1
+    #global cnt
+    #cnt += 1
     x0, y0 = start_idx
     sx, sy = move_dir
 
     x = x0 + sx
     y = y0 + sy
 
+
     try:
         # obstacle, step back
-        if matrix[y, x] <= 0:
+        if matrix[y, x] <= obstacle_threshold:
             return (x0, y0), 2 / matrix[y0, x0]
         
         # out of bounds in negative direction, step back and end
@@ -299,8 +297,8 @@ def movement(matrix, start_idx, move_dir):
     return (x, y), energy_cost
 
 
-def branching_movement(matrix, current_idx, move_dir, initial_move_resource, move_resource, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, step_count):
-    global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
+def branching_movement(matrix, current_idx, move_dir, initial_move_resource, move_resource, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold):
+    #global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
     
 
     green, yellow, red, branches, last_cutoff = sets   # refrenced sets from main function
@@ -310,8 +308,7 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
         return
 
     # movement
-    (new_x, new_y), movement_cost = movement(matrix, current_idx, move_dir)
-    step_count += 1
+    (new_x, new_y), movement_cost = movement(matrix, current_idx, move_dir, obstacle_threshold)
     energy_left = move_resource - movement_cost
 
     # save green and yellow coords if energy dips threshold
@@ -322,7 +319,7 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
     elif move_resource > initial_move_resource - ring_50:
         if energy_left < initial_move_resource - ring_50:
             if (new_x, new_y) in green:
-                cnt_kill_1 += 1
+                #cnt_kill_1 += 1
                 return
             else:
                 yellow.add((new_x, new_y))
@@ -333,7 +330,7 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
         if energy_left < initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
             if (new_x, new_y) in green or (new_x, new_y) in yellow:
                 #print(f'Killing branch: {new_x, new_y}')
-                cnt_kill_2 += 1
+                #cnt_kill_2 += 1
                 return
             else:
                 #print(f'Adding to last cutoff: {new_x, new_y}')
@@ -346,26 +343,22 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
     # green kill off
     if move_resource < initial_move_resource - (ring_25 *1.1):
         if (new_x, new_y) in green:
-            cnt_kill_1 += 1
+            #cnt_kill_1 += 1
             return
 
     # yellow kill off
     if move_resource < initial_move_resource - (ring_50 *1.1):
         if (new_x, new_y) in yellow:
-            cnt_kill_2 += 1
+            #cnt_kill_2 += 1
             return
 
     # killoff between yellow and red
     if move_resource < initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2))*1.1:
         if (new_x, new_y) in last_cutoff:
-            cnt_kill_3 += 1
+            #cnt_kill_3 += 1
             return
         
-    #print(f'{step_count}/{initial_move_resource*2} steps')
-    if step_count > initial_move_resource*2:
-        print(f'Step limit reached: {step_count}')
-        red.add((new_x, new_y)) # red coords
-        return
+    
 
 
 
@@ -387,49 +380,49 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
 
         # Branching if terrain change is significant worse
         if terrain_change < -worse_terrain_threshold and (new_x, new_y) not in branches:
-            cnt4 += 1
+            #cnt4 += 1
             # continue in the same direction
-            branching_movement(matrix, (new_x, new_y), move_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, step_count)
+            branching_movement(matrix, (new_x, new_y), move_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
             
             sx, sy = move_dir   # current direction
             # Branches in 4 directions. diagonals in same direction and sideways.
             new_directions = [
-                (sy,-sx),   # right
-                (-sy,sx),   # left
+                #(sy,-sx),   # right
+                #(-sy,sx),   # left
                 (normalize_component(sx+sy),normalize_component(sy-sx)), # right diagonal
                 (normalize_component(sx-sy),normalize_component(sy+sx)) # left diagonal
             ]
 
             for new_dir in new_directions:
                 branches.add((new_x+new_dir[0], new_y+new_dir[1]))
-                branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, step_count)
+                branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
 
             
 
         # Random branching. Branches in all 8 directions
         elif rand_int <= random_branching_chance and (new_x, new_y) not in branches:
-            cnt2 += 1
+            #cnt2 += 1
             for i in range(-1, 2, 1):
                 for j in range(-1, 2, 1):
                     new_dir = (i, j)
                     if new_dir != (0, 0):
                         branches.add((new_x+new_dir[0], new_y+new_dir[1]))
-                        branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, step_count)
+                        branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
         
         # Change direction if obstacle, randomly choose right or left
         elif (x, y) == (new_x, new_y):
-            cnt3 += 1
+            #cnt3 += 1
             if random.randint(0,1) == 1:
                 new_dir = (move_dir[1], -move_dir[0]) # right
             else:
                 new_dir = (-move_dir[1], move_dir[0])  # left
-            branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, step_count)
+            branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
 
         
 
         # Continue in the same direction 
         else:               
-            branching_movement(matrix, (new_x, new_y), move_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, step_count)
+            branching_movement(matrix, (new_x, new_y), move_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
         
     else:
         # Energy depleted, stop recursion and save end point
@@ -458,18 +451,19 @@ def calculate_map_extension(max_distance, square_radius):
     return map_extension
 
 
-def create_slope_matrix(height_matrix, norm_cap, folder, search_id=0):
+def create_slope_matrix(height_matrix, norm_cap, square_factor, folder, search_id):
     slope_matrix = calc_steepness(height_matrix)
     slope_matrix[slope_matrix > norm_cap] = norm_cap
     norm_slope_matrix = normalize_array(slope_matrix, norm_cap)
     inv_slope_matrix = 1 - norm_slope_matrix
-    inv_slope_matrix = inv_slope_matrix ** 2 # Squaring whole array to make the difference between high and low values bigger
+    inv_slope_matrix = inv_slope_matrix ** square_factor # more weight to lower values
     np.save(f'{folder}id{search_id}_slope_matrix.npy', inv_slope_matrix)
     return inv_slope_matrix
 
 def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config):
     
     worse_terrain_threshold = config.WORSE_TERRAIN
+    obstacle_threshold = config.OBSTACLE_THRESHOLD
     random_branching_chance = config.RANDOM_FACTOR
     
     radius = terrain_score_matrix.shape[0] / 2
@@ -488,7 +482,7 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
     last_cutoff = set()
     sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
 
-    start_time = time.perf_counter()
+    #start_time = time.perf_counter()
     for n in range(config.ITERATIONS):
         curr_dir = 1
         for i in range(-1, 2, 1):
@@ -499,15 +493,15 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
                     curr_dir += 1
                     branches = set() # reset branches
                     sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
-                    branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_distance, max_distance, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, 0)
+                    branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_distance, max_distance, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
                     
-    end_time = time.perf_counter()
+    #end_time = time.perf_counter()
 
 
-    print(f'Params: {config.ITERATIONS} iter, {config.RANGE_FACTOR} b_range, {worse_terrain_threshold} terrain_thrshld, {random_branching_chance} random_chance')
-    print(f"Branching simulation took {end_time - start_time} seconds")
-    print(f'Unique paths simulated: {len(red_coords)}')  # number of endpoints/paths
-    debug_stats_print()
+    #print(f'Params: {config.ITERATIONS} iter, {config.RANGE_FACTOR} b_range, {worse_terrain_threshold} terrain_thrshld, {random_branching_chance} random_chance')
+    #print(f"Branching simulation took {end_time - start_time} seconds")
+    #print(f'Unique paths simulated: {len(red_coords)}')  # number of endpoints/paths
+    #debug_stats_print()
 
     # convert sets to np arrays
     red_points = np.array(list(red_coords))

@@ -1,7 +1,9 @@
 try:
     from sarModel.modelFunctions.constants import *
+    
 except:
     from constants import *
+    
 
 
 import pyproj
@@ -281,7 +283,7 @@ def create_numpy_arrays_from_tiff(search_id, start_lat, start_lng, tiff_folder, 
     create_terrain_RGB_array(f'{tiff_folder}id{search_id}_{start_lat}_{start_lng}_terrain_composite.tif', output_folder)
 
 
-def create_height_array(tiff_path, output_folder="output/array", search_id=0):
+def create_height_array(tiff_path, output_folder="output/array", reducation_factor=5, search_id=0):
     """
     Create a NumPy array from a TIFF file containing height data.
 
@@ -294,12 +296,15 @@ def create_height_array(tiff_path, output_folder="output/array", search_id=0):
     """
 
     height_dataset = exctract_data_from_tiff(tiff_path)
-    np.save(f'{output_folder}id{search_id}_height_matrix.npy', height_dataset[:-1,:-1])
+    height_dataset = height_dataset[:-1,:-1]  # Remove last row and column to make it square  
+    height_dataset = reduce_resolution(height_dataset, factor=reducation_factor, method='mean')
+
+    np.save(f'{output_folder}id{search_id}_height_matrix.npy', height_dataset)
     print(f'Height data np array saved to {output_folder}height_matrix.npy')
 
 
 
-def create_terrain_RGB_array(filepath, output_folder="output/array/", search_id=0):
+def create_terrain_RGB_array(filepath, output_folder="output/array/", reduction_factor=5, search_id=0):
     """
     Create a RGB array from a terrain dataset stored in a TIFF file.
 
@@ -314,6 +319,10 @@ def create_terrain_RGB_array(filepath, output_folder="output/array/", search_id=
     terrain_dataset_G = exctract_data_from_tiff(tiff_path=filepath, band_n=2)
     terrain_dataset_B = exctract_data_from_tiff(tiff_path=filepath, band_n=3)
     terrain_dataset = np.array([terrain_dataset_R, terrain_dataset_G, terrain_dataset_B])
+
+    # Downsample the terrain dataset
+    terrain_dataset = downsample_rgb_image(terrain_dataset, factor=reduction_factor)
+
     np.save(f'{output_folder}id{search_id}_terrain_RGB_matrix.npy', terrain_dataset)
     print(f'Terrain RGB data np array saved to {output_folder}terrain_RGB_matrix.npy')
 
@@ -475,3 +484,43 @@ def rasterize_gdf(gdf, height, width, transform):
 
 def normalize_array(array, cap):
     return array / cap
+
+
+def downsample_rgb_image(image, factor):
+    """
+    Downsample an RGB image by selecting every 'factor'-th pixel from each dimension.
+    Args:
+    image (numpy array): 3-dimensional RGB image of shape (channels, height, width)
+    factor (int): The downsampling factor for both height and width
+
+    Returns:
+    numpy array: The downsampled RGB image
+    """
+    # Downsampling the image by taking every 'factor'-th pixel along each spatial dimension
+    downsampled_image = image[:, ::factor, ::factor]
+    return downsampled_image
+
+
+def downsample_2d_array(array, factor):
+    """
+    Downsample a 2D array by selecting every 'factor'-th element from each dimension.
+    Args:
+    array (numpy array): 2-dimensional array of shape (height, width)
+    factor (int): The downsampling factor for both height and width
+
+    Returns:
+    numpy array: The downsampled 2D array
+    """
+    # Downsampling the array by taking every 'factor'-th element along each dimension
+    downsampled_array = array[::factor, ::factor]
+    return downsampled_array
+
+
+
+def reduce_resolution(matrix, factor=5, method="mean"):
+    if method == "mean":
+        return matrix.reshape(matrix.shape[0]//factor, factor, matrix.shape[1]//factor, factor).mean(axis=1).mean(axis=2)
+    elif method == "max":
+        return matrix.reshape(matrix.shape[0]//factor, factor, matrix.shape[1]//factor, factor).max(axis=1).max(axis=2)
+    elif method == "min":
+        return matrix.reshape(matrix.shape[0]//factor, factor, matrix.shape[1]//factor, factor).mean(axis=1).min(axis=2)

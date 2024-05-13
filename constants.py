@@ -1,9 +1,5 @@
 from enum import Enum
 
-from pathlib import Path
-
-#BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 class ModelConfig:
     
@@ -16,20 +12,27 @@ class ModelConfig:
         self.SQUARE_RADIUS = 500  # 1000m x 1000m square
         self.EXTRA_MAP_SIZE = 0.5  # 50% extra map size
 
-        self.WINTER_MODE = winter
-
+        # Resolution
         self.REDUCTION_FACTOR = 5
+
+        # Height
         self.NORMALIZE_CAP = 10
-        self.COMBINATION_METHORD = "square"
+        self.SQUARE_FACTOR = 2
+
+        # Matrix combination
+        self.COMBINATION_METHORD = "multiply"
         self.FILTER_SIZE = 3
 
+        # Siumlation
         self.ITERATIONS = 2
-        self.RANGE_FACTOR = 2
+        self.RANGE_FACTOR = 1.25
         self.WORSE_TERRAIN = 0.3
-        self.RANDOM_FACTOR = 10  # n/100.000
+        self.OBSTACLE_THRESHOLD = 0.1
+        self.RANDOM_FACTOR = 10  
         self.HULL_ALPHA = 10
 
-
+        # Terrain type
+        self.WINTER_MODE = winter
         self.TRAIL = 1
         self.RAILWAY = 0.8
         self.BUILDING = 0
@@ -58,10 +61,6 @@ class ModelConfig:
                 "Ferskvann":    0.05,
                 "Hav":          0.01,   
             }
-
-
-
-
         self.TERRAIN_RGB = {  # RGB values for terrain types (from GeoNorge data)
             "Skog": (158, 204, 115),
             "Åpen fastmark": (217, 217, 217),
