@@ -20,7 +20,7 @@ if __name__ == "__main__":
     arrays_folder = f'{output_folder}array/'
 
     # Set to visulize all data in pyplots or set individual plots below
-    plot = True
+    plot = False
 
     # Set to collect data from GeoNorge and OSM
     collect = True
@@ -121,9 +121,9 @@ if __name__ == "__main__":
     worse_terrain_threshold = 0.3                           # threshold for branching when worse terrain (0-1)
     random_branching_chance = 10                             # chance of random branching (n/100.000)
     obstacle_threshold = 0.1                                # threshold for obstacle detection (0-1)
-    d1 = 400
-    d2 = 800
-    d3 = 1500
+    d1 = 600
+    d2 = 1800
+    d3 = 3200
 
     # Create map overlay layer with CRS from branching simulation results
     create_map_overlay = True if branching_sim else False
@@ -144,8 +144,8 @@ if __name__ == "__main__":
     # start_lat = 68.443336
     # start_lng = 17.527965
 
-    start_lat = 68.443336
-    start_lng = 17.527965
+    start_lat = 68.26615067072053
+    start_lng = 14.537723823348557
     
 
     #68.4383953706666, 17.427225974564415 narvik sentrum
@@ -227,7 +227,7 @@ if __name__ == "__main__":
         railway_files = [railway_file_osm]
         add_railway_data_to_terrain(terrain_type_matrix, railway_files, arrays_folder)
 
-        if plot or True:
+        if plot:
             plot_array(terrain_type_matrix, cmap='terrain', label="", title="Arealtype med jernbane")
 
 
@@ -252,7 +252,7 @@ if __name__ == "__main__":
         trail_files = [trail_file_gn, trail_file_osm]
         add_trails_data_to_terrain(terrain_type_matrix, trail_files, arrays_folder)
 
-        if plot or True:
+        if plot:
             plot_array(terrain_type_matrix, cmap='terrain', label="Verdi(0-1)", title="Arealtype med stier")
 
 
@@ -374,6 +374,8 @@ if __name__ == "__main__":
         max_energy = d75
         print(f"Max distance: {max_energy}")
         
+        print(f"Search area: {d25=}, {d50=}, {d75=}")
+
         green_coords = set()
         yellow_coords = set()
         red_coords = set()
@@ -402,7 +404,7 @@ if __name__ == "__main__":
         print(f'Params: {branching_sim_iterations} iter, {b_range_factor} b_range, {worse_terrain_threshold} terrain_thrshld, {random_branching_chance} random_chance')
         print(f"Branching simulation took {end_time - start_time} seconds")
         print(f'Unique paths simulated: {len(red_coords)}')  # number of endpoints/paths
-        debug_stats_print()
+        #debug_stats_print()
 
         # convert sets to np arrays
         red_points = np.array(list(red_coords))

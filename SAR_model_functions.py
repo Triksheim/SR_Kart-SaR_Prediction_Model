@@ -370,12 +370,21 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
             terrain_change = 10  # prob out of bounds
 
 
-        if energy_left > ring_25:
-            rand_int = random.randint(1,1000)
-        elif energy_left > ring_50:
-            rand_int = random.randint(1,10000)
+        if energy_left > initial_move_resource - ring_25:
+            if ring_25 <= 600/5:
+                rand_int = random.randint(1,100)
+            else:
+                rand_int = random.randint(1,1000)
+        elif energy_left > initial_move_resource - ring_50:
+            if ring_50 <= 1800/5:
+                rand_int = random.randint(1,1000)
+            else:
+                rand_int = random.randint(1,10000) 
         else:
-            rand_int = random.randint(1,100000)
+            if initial_move_resource <= 3600/5:
+                rand_int = random.randint(1,10000)
+            else:
+                rand_int = random.randint(1,100000)
 
 
         # Branching if terrain change is significant worse
@@ -472,6 +481,8 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
     ring_25 = (d25 / config.REDUCTION_FACTOR) * config.RANGE_FACTOR
     ring_50 = (d50 / config.REDUCTION_FACTOR) * config.RANGE_FACTOR
     ring_75 = (d75 / config.REDUCTION_FACTOR) * config.RANGE_FACTOR
+
+    print(f'{ring_25=}, {ring_50=}, {ring_75=}')
 
     max_distance = ring_75
     

@@ -105,7 +105,7 @@ def process_model_data(search_id, lat, lng, d25, d50, d75, config):
     add_railway_data_to_terrain(terrain_type_matrix, railway_files, config.ARRAY_FOLDER,
                                  config.RAILWAY, search_id)
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
-        f.write(f' done.\n')
+        f.write(f' done\n')
 
 
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
