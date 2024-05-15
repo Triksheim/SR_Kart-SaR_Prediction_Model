@@ -32,7 +32,7 @@ class ModelConfig:
         self.RANGE_FACTOR = 1.25
         self.TERRAIN_CHANGE_THRESHOLD = 0.3
         self.OBSTACLE_THRESHOLD = 0.1
-        self.RANDOM_FACTOR = 1   
+        self.RANDOM_FACTOR = 2   
         self.HULL_ALPHA = 15
 
         # Terrain type
