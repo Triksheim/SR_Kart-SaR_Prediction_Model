@@ -12,6 +12,7 @@ from rasterio.merge import merge
 from rasterio.io import MemoryFile
 from PIL import Image
 import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
 import numpy as np
 from shapely.geometry import Polygon, MultiLineString, MultiPolygon
 from shapely.ops import polygonize, unary_union
@@ -328,12 +329,16 @@ def create_terrain_RGB_array(filepath, output_folder="output/array/", reduction_
 
 
 
-def plot_array(array, cmap="terrain", label="", title="Array Plot"):
+def plot_array(array, cmap="terrain", label="", title="Array Plot", save=False, folder="output/"):
     plt.imshow(array, cmap=cmap)
     plt.colorbar(label=label)
     plt.title(title)
     plt.axis('off')
-    plt.show()
+    if save:
+        plt.savefig(f'{folder}{title}.png')
+        plt.close()
+    else:
+        plt.show()
 
 
 def compute_concave_hull_from_points(points, alpha):
@@ -409,9 +414,9 @@ def get_polygon_coords_from_hull(hull):
 
 
 
-def create_polygon_map_overlay(matrix, coords, hull, color="red", output_crs="EPSG:25833", folder='output/overlays/overlay', search_id=0):
+def create_polygon_map_overlay(matrix, coords, hull, color="red", output_crs="EPSG:25833", folder='output/overlays/overlay', reduction_factor=5, search_id=0):
             matrix_width, matrix_height = matrix.shape[0], matrix.shape[1]
-            map_diameter = matrix_width * PreProcessConfig.REDUCTION_FACTOR.value  # Meters
+            map_diameter = matrix_width * reduction_factor  # Meters
             distance_per_index = map_diameter / matrix_width  # Meters per index in the matrix
             lat, lng = coords
             center_x, center_y = transform_coordinates_to_utm(lat, lng)
@@ -524,3 +529,37 @@ def reduce_resolution(matrix, factor=5, method="mean"):
         return matrix.reshape(matrix.shape[0]//factor, factor, matrix.shape[1]//factor, factor).max(axis=1).max(axis=2)
     elif method == "min":
         return matrix.reshape(matrix.shape[0]//factor, factor, matrix.shape[1]//factor, factor).mean(axis=1).min(axis=2)
+    
+
+def plot_branching_result(terrain_score_matrix, concave_hull_r, concave_hull_y, concave_hull_g, config, save=False):
+    radius = terrain_score_matrix.shape[0] / 2
+    plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
+    plt.colorbar(label="Terreng: Vaskelig  ->  Lett")
+
+    circle = Circle((radius, radius), (config.D25/config.REDUCTION_FACTOR), color="green", fill=False)   # search area circle
+    plt.gca().add_patch(circle)
+
+    circle = Circle((radius, radius), (config.D50/config.REDUCTION_FACTOR), color="yellow", fill=False)   # search area circle
+    plt.gca().add_patch(circle)
+
+    circle = Circle((radius, radius), (config.D75/config.REDUCTION_FACTOR), color="red", fill=False)   # search area circle
+    plt.gca().add_patch(circle)
+
+    if concave_hull_r:
+        x_r, y_r = get_polygon_coords_from_hull(concave_hull_r)
+        plt.fill(x_r, y_r, edgecolor='r',linewidth=3, fill=False)
+    if concave_hull_y:
+        x_y, y_y = get_polygon_coords_from_hull(concave_hull_y)
+        plt.fill(x_y, y_y, edgecolor='y',linewidth=3, fill=False)
+    if concave_hull_g:
+        x_g, y_g = get_polygon_coords_from_hull(concave_hull_g)
+        plt.fill(x_g, y_g, edgecolor='g',linewidth=3, fill=False)
+
+    plt.title("Branching result plot")
+    plt.axis('equal')
+
+    if save:
+        plt.savefig(f'{config.LOG_DIR}Simulation result.png')
+        plt.close()
+    else:
+        plt.show()

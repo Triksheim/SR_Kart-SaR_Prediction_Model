@@ -9,7 +9,7 @@ import numpy as np
 import math
 import random
 import time
-from scipy.ndimage import maximum_filter
+
 
 #############################################################
 # """ For debugging branching simulation """
@@ -17,17 +17,17 @@ from scipy.ndimage import maximum_filter
 # cnt2 = 0
 # cnt3 = 0
 # cnt4 = 0
-# cnt_kill_1 = 0
-# cnt_kill_2 = 0
-# cnt_kill_3 = 0
+cnt_kill_1 = 0
+cnt_kill_2 = 0
+cnt_kill_3 = 0
 def debug_stats_print():
     global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
     print(f'1:{cnt_kill_1},2:{cnt_kill_2},3:{cnt_kill_3}, Total:{cnt_kill_1+cnt_kill_2+cnt_kill_3} Killed branches')
 
-    print(f'{cnt} Steps')
-    print(f'{cnt2} Branching, random')
-    print(f'{cnt4} Branching, worse terrain')
-    print(f'{cnt3} Direction change, obstacle')
+    # print(f'{cnt} Steps')
+    # print(f'{cnt2} Branching, random')
+    # print(f'{cnt4} Branching, worse terrain')
+    # print(f'{cnt3} Direction change, obstacle')
 #############################################################
 
 
@@ -178,7 +178,7 @@ def calc_steepness(height_matrix):
 
 
 
-def combine_terrain_type_and_slope(terrain_type_matrix, slope_matrix, method="mean", filter_size=3, folder="output/array/", search_id=0):
+def combine_terrain_type_and_slope(terrain_type_matrix, slope_matrix, method="mean", folder="output/array/", search_id=0):
     slope_matrix[terrain_type_matrix == 1] = 1
     #terrain_type_matrix[terrain_type_matrix <= 0.05] = 0
     #slope_matrix[slope_matrix <= 0.1] = 0
@@ -297,11 +297,11 @@ def movement(matrix, start_idx, move_dir, obstacle_threshold):
     return (x, y), energy_cost
 
 
-def branching_movement(matrix, current_idx, move_dir, initial_move_resource, move_resource, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold):
-    #global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
+def branching_movement_recursive(matrix, current_idx, move_dir, initial_move_resource, move_resource, sets, ring_25, ring_50, terrain_change_threshold, random_branching_chance, obstacle_threshold):
+    global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
     
 
-    green, yellow, red, branches, last_cutoff = sets   # refrenced sets from main function
+    green, yellow, red, branch_log, last_cutoff = sets   # refrenced sets from main function
     x, y = current_idx
     if move_resource <= 0:
         red.add(current_idx) # red coords
@@ -313,29 +313,40 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
 
     # save green and yellow coords if energy dips threshold
     if move_resource > initial_move_resource - ring_25:
-        if energy_left < initial_move_resource - ring_25:
-            green.add((new_x, new_y))
+        green.add((new_x, new_y)) # all green coords
+        # if energy_left < initial_move_resource - ring_25:
+        #     green.add((new_x, new_y))
+
 
     elif move_resource > initial_move_resource - ring_50:
-        if energy_left < initial_move_resource - ring_50:
-            if (new_x, new_y) in green:
-                #cnt_kill_1 += 1
-                return
-            else:
-                yellow.add((new_x, new_y))
+        yellow.add((new_x, new_y)) 
+        # if energy_left < initial_move_resource - ring_50:
+        #     if (new_x, new_y) in green:
+        #         #cnt_kill_1 += 1
+        #         return
+        #     else:
+        #         yellow.add((new_x, new_y))
 
 
-    elif move_resource > initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
-        #print("Start of last cutoff")
-        if energy_left < initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
-            if (new_x, new_y) in green or (new_x, new_y) in yellow:
-                #print(f'Killing branch: {new_x, new_y}')
-                #cnt_kill_2 += 1
-                return
-            else:
-                #print(f'Adding to last cutoff: {new_x, new_y}')
-                last_cutoff.add((new_x, new_y))
+    #elif move_resource > initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
+    else:
+        red.add((new_x, new_y))
 
+        #print(f'{initial_move_resource - ring_50=}, {(ring_50 + ((initial_move_resource - ring_50)/2))=}, {initial_move_resource=}')
+
+        if move_resource > initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
+            last_cutoff.add((new_x, new_y))
+
+
+        # #print("Start of last cutoff")
+        # if energy_left < initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
+        #     # if (new_x, new_y) in green or (new_x, new_y) in yellow:
+        #     #     #cnt_kill_2 += 1
+        #     #     return
+        #     # else:
+        #     last_cutoff.add((new_x, new_y))
+
+   
 
     
     # branches kill offs
@@ -343,19 +354,19 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
     # green kill off
     if move_resource < initial_move_resource - (ring_25 *1.1):
         if (new_x, new_y) in green:
-            #cnt_kill_1 += 1
+            cnt_kill_1 += 1
             return
 
     # yellow kill off
     if move_resource < initial_move_resource - (ring_50 *1.1):
         if (new_x, new_y) in yellow:
-            #cnt_kill_2 += 1
+            cnt_kill_2 += 1
             return
 
     # killoff between yellow and red
-    if move_resource < initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2))*1.1:
+    if move_resource < initial_move_resource - ((ring_50 + ((initial_move_resource - ring_50)/2)) * 1.1):
         if (new_x, new_y) in last_cutoff:
-            #cnt_kill_3 += 1
+            cnt_kill_3 += 1
             return
         
     
@@ -369,74 +380,244 @@ def branching_movement(matrix, current_idx, move_dir, initial_move_resource, mov
         except:
             terrain_change = 10  # prob out of bounds
 
-
+        # Branching multipliers. Changes based on energy left and distance params
         if energy_left > initial_move_resource - ring_25:
-            if ring_25 <= 600/5:
-                rand_int = random.randint(1,100)
+            if ring_25 <= 100:
+                random_branch_multiplier = 100
             else:
-                rand_int = random.randint(1,1000)
+                random_branch_multiplier = 20
         elif energy_left > initial_move_resource - ring_50:
-            if ring_50 <= 1800/5:
-                rand_int = random.randint(1,1000)
+            if ring_50 <= 300:
+                random_branch_multiplier = 50
             else:
-                rand_int = random.randint(1,10000) 
-        else:
-            if initial_move_resource <= 3600/5:
-                rand_int = random.randint(1,10000)
-            else:
-                rand_int = random.randint(1,100000)
+                random_branch_multiplier = 20
 
+        elif energy_left > initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
+            random_branch_multiplier = 10
+
+        else:
+            random_branch_multiplier = 20
+
+        
 
         # Branching if terrain change is significant worse
-        if terrain_change < -worse_terrain_threshold and (new_x, new_y) not in branches:
+        if abs(terrain_change) > terrain_change_threshold and (new_x, new_y) not in branch_log:
             #cnt4 += 1
             # continue in the same direction
-            branching_movement(matrix, (new_x, new_y), move_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
+            branching_movement(matrix, (new_x, new_y), move_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, terrain_change_threshold, random_branching_chance, obstacle_threshold)
             
             sx, sy = move_dir   # current direction
-            # Branches in 4 directions. diagonals in same direction and sideways.
-            new_directions = [
-                #(sy,-sx),   # right
-                #(-sy,sx),   # left
+            # Branches in 4 possible directions. diagonals in same direction or sideways.
+
+
+            if terrain_change < 0: # worse terrain
+                new_directions = [
                 (normalize_component(sx+sy),normalize_component(sy-sx)), # right diagonal
                 (normalize_component(sx-sy),normalize_component(sy+sx)) # left diagonal
-            ]
+                ]
+
+            else: # better terrain
+                if random.random() > 0.5:
+                    new_directions = [
+                        (sy,-sx),   # right
+                        (-sy,sx)   # left
+                    ]
+                else:
+                    new_directions = [
+                    (normalize_component(sx+sy),normalize_component(sy-sx)), # right diagonal
+                    (normalize_component(sx-sy),normalize_component(sy+sx)) # left diagonal
+                    ]
 
             for new_dir in new_directions:
-                branches.add((new_x+new_dir[0], new_y+new_dir[1]))
-                branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
+                branch_log.add((new_x+new_dir[0], new_y+new_dir[1]))
+                branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, terrain_change_threshold, random_branching_chance, obstacle_threshold)
 
             
 
-        # Random branching. Branches in all 8 directions
-        elif rand_int <= random_branching_chance and (new_x, new_y) not in branches:
+        # Random branching. Branches in 5 directions
+        elif (random_branch_multiplier * random_branching_chance) > random.randint(1,10000) and (new_x, new_y) not in branch_log:
             #cnt2 += 1
-            for i in range(-1, 2, 1):
-                for j in range(-1, 2, 1):
-                    new_dir = (i, j)
-                    if new_dir != (0, 0):
-                        branches.add((new_x+new_dir[0], new_y+new_dir[1]))
-                        branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
+
+            sx, sy = move_dir   # current direction
+
+            
+            new_directions = [
+            (sx, sy),   # forward
+            (sy,-sx),   # right
+            (-sy,sx),   # left
+            (normalize_component(sx+sy),normalize_component(sy-sx)), # right diagonal
+            (normalize_component(sx-sy),normalize_component(sy+sx)) # left diagonal
+            ]
+
+
+            for new_dir in new_directions:
+                branch_log.add((new_x+new_dir[0], new_y+new_dir[1]))
+                branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, terrain_change_threshold, random_branching_chance, obstacle_threshold)
+
+            # for i in range(-1, 2, 1):
+            #     for j in range(-1, 2, 1):
+            #         new_dir = (i, j)
+            #         if new_dir != (0, 0):
+            #             branch_log.add((new_x+new_dir[0], new_y+new_dir[1]))
+            #             branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, terrain_change_threshold, random_branching_chance, obstacle_threshold)
         
-        # Change direction if obstacle, randomly choose right or left
+        # Posision not changed, meaning obstacle. Randomly change direction
         elif (x, y) == (new_x, new_y):
             #cnt3 += 1
-            if random.randint(0,1) == 1:
-                new_dir = (move_dir[1], -move_dir[0]) # right
-            else:
-                new_dir = (-move_dir[1], move_dir[0])  # left
-            branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
 
-        
+            sx, sy = move_dir   # current direction
+
+            # Randomly choose new direction
+            random_num = random.randint(1, 4)
+            if random_num == 1:
+                new_dir = (sy,-sx)   # right
+            elif random_num == 2:
+                new_dir = (-sy,sx)  # left
+            elif random_num == 3:
+                new_dir = (normalize_component(sx+sy),normalize_component(sy-sx)) # right diagonal 
+            else:
+                new_dir = (normalize_component(sx-sy),normalize_component(sy+sx))  # left diagonal
+            
+
+
+            # if random.randint(0,1) == 1:
+            #     new_dir = (move_dir[1], -move_dir[0]) # right
+            # else:
+            #     new_dir = (-move_dir[1], move_dir[0])  # left
+
+
+            branching_movement(matrix, (new_x, new_y), new_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, terrain_change_threshold, random_branching_chance, obstacle_threshold)
 
         # Continue in the same direction 
         else:               
-            branching_movement(matrix, (new_x, new_y), move_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
+            branching_movement(matrix, (new_x, new_y), move_dir, initial_move_resource, energy_left, sets, ring_25, ring_50, terrain_change_threshold, random_branching_chance, obstacle_threshold)
         
     else:
         # Energy depleted, stop recursion and save end point
         red.add((new_x, new_y)) # red coords
         
+
+
+def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_resource, sets, ring_25, ring_50, terrain_change_threshold, random_branching_chance, obstacle_threshold):
+    global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
+    
+    green, yellow, red, branch_log, last_cutoff = sets   # referenced sets from main function
+    stack = [(start_idx, move_dir, move_resource)]
+    
+    while stack:
+        current_idx, move_dir, move_resource = stack.pop()
+        x, y = current_idx
+        
+        if move_resource <= 0:
+            red.add(current_idx)
+            continue
+        
+        # Movement
+        (new_x, new_y), movement_cost = movement(matrix, current_idx, move_dir, obstacle_threshold)
+        energy_left = move_resource - movement_cost
+        
+        # Save coords for relevant rings based on energy left
+        if move_resource > initial_move_resource - ring_25:
+            green.add((new_x, new_y))
+        elif move_resource > initial_move_resource - ring_50:
+            yellow.add((new_x, new_y))
+        else:
+            red.add((new_x, new_y))
+            if move_resource > initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
+                last_cutoff.add((new_x, new_y))
+        
+        # Branches kill offs
+        if move_resource < initial_move_resource - (ring_25 * 1.1) and (new_x, new_y) in green:
+            cnt_kill_1 += 1
+            continue
+        if move_resource < initial_move_resource - (ring_50 * 1.1) and (new_x, new_y) in yellow:
+            cnt_kill_2 += 1
+            continue
+        if move_resource < initial_move_resource - ((ring_50 + ((initial_move_resource - ring_50)/2)) * 1.1) and (new_x, new_y) in last_cutoff:
+            cnt_kill_3 += 1
+            continue
+        
+        if energy_left > 0:
+            try:
+                terrain_change = matrix[new_y, new_x] - matrix[y, x]
+            except:
+                terrain_change = 10  # probably out of bounds
+            
+            # Branching multipliers based on energy left and distance params
+            if energy_left > initial_move_resource - ring_25:
+                random_branch_multiplier = 100 if ring_25 <= 100 else 20
+            elif energy_left > initial_move_resource - ring_50:
+                random_branch_multiplier = 50 if ring_50 <= 300 else 20
+            elif energy_left > initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
+                random_branch_multiplier = 10
+            else:
+                random_branch_multiplier = 20
+            
+            # Branching if terrain change is significant
+            if abs(terrain_change) > terrain_change_threshold and (new_x, new_y) not in branch_log:
+                stack.append(((new_x, new_y), move_dir, energy_left))
+                
+                sx, sy = move_dir
+                if terrain_change < 0:  # worse terrain
+                    new_directions = [
+                        (normalize_component(sx + sy), normalize_component(sy - sx)),  # right diagonal
+                        (normalize_component(sx - sy), normalize_component(sy + sx))   # left diagonal
+                    ]
+                else:  # better terrain
+                    if random.random() > 0.5:
+                        new_directions = [
+                            (sy, -sx),  # right
+                            (-sy, sx)   # left
+                        ]
+                    else:
+                        new_directions = [
+                            (normalize_component(sx + sy), normalize_component(sy - sx)),  # right diagonal
+                            (normalize_component(sx - sy), normalize_component(sy + sx))   # left diagonal
+                        ]
+                
+                for new_dir in new_directions:
+                    branch_log.add((new_x + new_dir[0], new_y + new_dir[1]))
+                    stack.append(((new_x, new_y), new_dir, energy_left))
+            
+            # Random branching
+            elif (random_branch_multiplier * random_branching_chance) > random.randint(1, 10000) and (new_x, new_y) not in branch_log:
+                sx, sy = move_dir
+                new_directions = [
+                    (sx, sy),  # forward
+                    (sy, -sx),  # right
+                    (-sy, sx),  # left
+                    (normalize_component(sx + sy), normalize_component(sy - sx)),  # right diagonal
+                    (normalize_component(sx - sy), normalize_component(sy + sx))   # left diagonal
+                ]
+                
+                for new_dir in new_directions:
+                    branch_log.add((new_x + new_dir[0], new_y + new_dir[1]))
+                    stack.append(((new_x, new_y), new_dir, energy_left))
+            
+            # Position not changed, meaning obstacle. Randomly change direction
+            elif (x, y) == (new_x, new_y):
+                sx, sy = move_dir
+                random_num = random.randint(1, 4)
+                if random_num == 1:
+                    new_dir = (sy, -sx)  # right
+                elif random_num == 2:
+                    new_dir = (-sy, sx)  # left
+                elif random_num == 3:
+                    new_dir = (normalize_component(sx + sy), normalize_component(sy - sx))  # right diagonal
+                else:
+                    new_dir = (normalize_component(sx - sy), normalize_component(sy + sx))  # left diagonal
+                
+                stack.append(((new_x, new_y), new_dir, energy_left))
+            
+            # Continue in the same direction
+            else:
+                stack.append(((new_x, new_y), move_dir, energy_left))
+        else:
+            red.add((new_x, new_y))  # Energy depleted, end branch
+
+
+
+
 
 def calculate_map_extension(max_distance, square_radius):
     #print(square_radius, max_distance, extra_space)
@@ -471,7 +652,7 @@ def create_slope_matrix(height_matrix, norm_cap, square_factor, folder, search_i
 
 def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config):
     
-    worse_terrain_threshold = config.WORSE_TERRAIN
+    worse_terrain_threshold = config.TERRAIN_CHANGE_THRESHOLD
     obstacle_threshold = config.OBSTACLE_THRESHOLD
     random_branching_chance = config.RANDOM_FACTOR
     
@@ -482,6 +663,7 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
     ring_50 = (d50 / config.REDUCTION_FACTOR) * config.RANGE_FACTOR
     ring_75 = (d75 / config.REDUCTION_FACTOR) * config.RANGE_FACTOR
 
+    print(f'{d25=}, {d50=}, {d75=}')
     print(f'{ring_25=}, {ring_50=}, {ring_75=}')
 
     max_distance = ring_75
@@ -489,9 +671,9 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
     green_coords = set()
     yellow_coords = set()
     red_coords = set()
-    branches = set()
+    branches_log = set()
     last_cutoff = set()
-    sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
+    sets = (green_coords, yellow_coords, red_coords, branches_log, last_cutoff)
 
     #start_time = time.perf_counter()
     for n in range(config.ITERATIONS):
@@ -502,8 +684,8 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
                 if move_direction != (0, 0):
                     print(f'Iteration {n+1}/{config.ITERATIONS}, Direction {curr_dir}/{8}')
                     curr_dir += 1
-                    branches = set() # reset branches
-                    sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
+                    branches_log = set() # reset branches
+                    sets = (green_coords, yellow_coords, red_coords, branches_log, last_cutoff)
                     branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_distance, max_distance, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
                     
     #end_time = time.perf_counter()
@@ -515,9 +697,9 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
     #debug_stats_print()
 
     # convert sets to np arrays
-    red_points = np.array(list(red_coords))
-    yellow_points = np.array(list(yellow_coords))
-    green_points = np.array(list(green_coords))
+    red_points = np.array(list(red_coords)[::5])
+    yellow_points = np.array(list(yellow_coords)[::5])
+    green_points = np.array(list(green_coords)[::2])
 
     return red_points, yellow_points, green_points
 
@@ -526,27 +708,13 @@ def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_poin
     concave_hull_y = compute_concave_hull_from_points(yellow_points, config.HULL_ALPHA)
     concave_hull_g = compute_concave_hull_from_points(green_points, config.HULL_ALPHA)
     
-    # plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
-    # plt.colorbar(label="Terreng: Vaskelig  ->  Lett")
-    # if concave_hull_r:
-    #     x_r, y_r = get_polygon_coords_from_hull(concave_hull_r)
-    #     plt.fill(x_r, y_r, edgecolor='r',linewidth=3, fill=False)
-    # if concave_hull_y:
-    #     x_y, y_y = get_polygon_coords_from_hull(concave_hull_y)
-    #     plt.fill(x_y, y_y, edgecolor='y',linewidth=3, fill=False)
-    # if concave_hull_g:
-    #     x_g, y_g = get_polygon_coords_from_hull(concave_hull_g)
-    #     plt.fill(x_g, y_g, edgecolor='g',linewidth=3, fill=False)
-    # plt.title("Branching result plot")
-    # plt.axis('equal')
-    # plt.show()
+    
+    plot_branching_result(terrain_score_matrix, concave_hull_r, concave_hull_y, concave_hull_g, config, save=True)
 
 
-
-
-    polygon_75 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", output_crs="EPSG:4326", folder=folder, search_id=search_id)
-    polygon_50 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", output_crs="EPSG:4326", folder=folder, search_id=search_id)
-    polygon_25 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", output_crs="EPSG:4326", folder=folder, search_id=search_id)
+    polygon_75 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", output_crs="EPSG:4326", folder=folder, reduction_factor=config.REDUCTION_FACTOR, search_id=search_id)
+    polygon_50 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", output_crs="EPSG:4326", folder=folder, reduction_factor=config.REDUCTION_FACTOR, search_id=search_id)
+    polygon_25 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", output_crs="EPSG:4326", folder=folder, reduction_factor=config.REDUCTION_FACTOR, search_id=search_id)
 
 
     # create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833", folder=folder, search_id=search_id)

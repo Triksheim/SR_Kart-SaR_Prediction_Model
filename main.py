@@ -1,7 +1,6 @@
 from utility import *
 from geo_services import *
 from SAR_model_functions import *
-from scipy.ndimage import maximum_filter
 from matplotlib.patches import Circle
 import math
 import numpy as np
@@ -18,6 +17,7 @@ if __name__ == "__main__":
     
     output_folder = "output/"
     arrays_folder = f'{output_folder}array/'
+    logs_folder = f'{output_folder}logs/'
 
     # Set to visulize all data in pyplots or set individual plots below
     plot = False
@@ -71,8 +71,6 @@ if __name__ == "__main__":
         "Dyrket mark": (255, 247, 167)
     }
     
-    # search in a city or not
-    city = False
 
     # Add trail data to terrain data
     add_trails = run_all_pp or False
@@ -98,8 +96,7 @@ if __name__ == "__main__":
     combine_matrix = run_all_pp or False
     plot_combined_matrix = False
     combination_method = "multiply"           # method for combining matrixes (mean, multiply, square)
-    filter_matrix = False     # apply max filter to combined matrix
-    filter_size = 3                         # nxn filter size
+    
     
     ## preprocessing functions end ## -----------------------------------------------------------
 
@@ -115,14 +112,12 @@ if __name__ == "__main__":
     scatter_endpoints = False                          # scatter endpoints in plot
     branching_sim_iterations = 2                    # number of iterations for each direction (iter * 8)
     b_range_factor = 1.25                 # factor for "max" travel distance                
-    hull_alpha = 15                                        # "concavity" of the search area hull
-    #ring_25 = 20                                            # percentage of max distance for 25% ring
-    #ring_50 = 50                                            # percentage of max distance for 50% ring
-    worse_terrain_threshold = 0.3                           # threshold for branching when worse terrain (0-1)
-    random_branching_chance = 10                             # chance of random branching (n/100.000)
+    hull_alpha = 15                                        # "concavity" of the search area hull                                           # percentage of max distance for 50% ring
+    terrain_change_threshold = 0.3                           # threshold for branching when large terrain change (0-1)
+    random_branching_chance = 2                             # chance of random branching (n/10.000)
     obstacle_threshold = 0.1                                # threshold for obstacle detection (0-1)
     d1 = 600
-    d2 = 1800
+    d2 = 1600
     d3 = 3200
 
     # Create map overlay layer with CRS from branching simulation results
@@ -144,8 +139,8 @@ if __name__ == "__main__":
     # start_lat = 68.443336
     # start_lng = 17.527965
 
-    start_lat = 68.26615067072053
-    start_lng = 14.537723823348557
+    start_lat = 68.44515518547429
+    start_lng = 17.53628253936768
     
 
     #68.4383953706666, 17.427225974564415 narvik sentrum
@@ -293,8 +288,7 @@ if __name__ == "__main__":
 
         #combined_matrix[combined_matrix < 0.05] = 0
 
-        if filter_matrix:
-            combined_matrix = maximum_filter(combined_matrix, size=filter_size)
+        plot_array(combined_matrix, title="Kombinert matrise", save=True, folder=logs_folder)
 
         if plot or plot_combined_matrix:
             plot_array(combined_matrix, cmap='terrain', label="Vanskelig  ->  Lett", title="Kombinert matrise, terreng score")
@@ -354,6 +348,8 @@ if __name__ == "__main__":
             
             plt.axis('equal')
             plt.title("Straight line result plot")
+
+
             plt.show()
 
 
@@ -396,20 +392,27 @@ if __name__ == "__main__":
                         curr_dir += 1
                         branches = set() # reset branches
                         sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
-                        branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_energy, max_energy, sets, d25, d50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
+                        branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_energy, max_energy, sets, d25, d50, terrain_change_threshold, random_branching_chance, obstacle_threshold)
                         
         end_time = time.perf_counter()
 
 
-        print(f'Params: {branching_sim_iterations} iter, {b_range_factor} b_range, {worse_terrain_threshold} terrain_thrshld, {random_branching_chance} random_chance')
+        print(f'Params: {branching_sim_iterations} iter, {b_range_factor} b_range, {terrain_change_threshold} terrain_thrshld, {random_branching_chance} random_chance')
         print(f"Branching simulation took {end_time - start_time} seconds")
         print(f'Unique paths simulated: {len(red_coords)}')  # number of endpoints/paths
-        #debug_stats_print()
+        debug_stats_print()
+
 
         # convert sets to np arrays
-        red_points = np.array(list(red_coords))
-        yellow_points = np.array(list(yellow_coords))
-        green_points = np.array(list(green_coords))
+        red_points = np.array(list(red_coords)[::5])
+        yellow_points = np.array(list(yellow_coords)[::5])
+        green_points = np.array(list(green_coords)[::2])
+
+        last_cutoff_points = np.array(list(last_cutoff)[::5])
+
+
+        print(f'{len(red_points)=}, {len(yellow_points)=}, {len(green_points)=}')
+
 
         print(f'Calculating polygons based on simulation results...')
         # compute concave hulls
@@ -444,11 +447,18 @@ if __name__ == "__main__":
             # plot endpoints
             if scatter_endpoints:
                 plt.scatter(red_points[:,0], red_points[:,1], color='red', s=5)
+
+                plt.scatter(last_cutoff_points[:,0], last_cutoff_points[:,1], color='pink', s=5)
+
                 plt.scatter(yellow_points[:,0], yellow_points[:,1], color='yellow', s=5)
                 plt.scatter(green_points[:,0], green_points[:,1], color='green', s=5)
+                
             
             plt.title("Branching result plot")
             plt.axis('equal')
+
+            plt.savefig(f'{logs_folder}Simulation result.png')
+
             plt.show()
     
 

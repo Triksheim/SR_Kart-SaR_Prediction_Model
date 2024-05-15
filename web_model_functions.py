@@ -20,13 +20,19 @@ def collect_model_data(search_id, lat, lng, d25, d50, d75, base_dir):
 
     logfile = f'{config.LOG_DIR}logfile.txt'
     with open(logfile, 'w') as f:
-        f.write(f'Logfile for search_id: {search_id}\n\n')
+        f.write(f'SAR logfile: {search_id=}, {lat=}, {lng=}\n\n')
 
     get_model_data(search_id, lat, lng, d25, d50, d75, config)
 
 # Run from webserver
 def start_model(search_id, lat, lng, d25, d50, d75, base_dir):
-    config = ModelConfig(base_dir)
+    config = ModelConfig(base_dir, d25=d25, d50=d50, d75=d75)
+    logfile = f'{config.LOG_DIR}logfile.txt'
+    with open(logfile, 'a') as f:
+        f.write(f'{config.config_str()}\n')
+        
+
+
     layers = process_model_data(search_id, lat, lng, d25, d50, d75, config)
     return layers
 
@@ -156,13 +162,17 @@ def process_model_data(search_id, lat, lng, d25, d50, d75, config):
     # Combine terrain and slope matrix
     print("Combining terrain and slope matrix...")
     terrain_type_matrix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_type_matrix.npy')
-    terrain_score_marix = combine_terrain_type_and_slope(terrain_type_matrix, slope_matrix, config.COMBINATION_METHORD,
-                                    config.FILTER_SIZE, config.ARRAY_FOLDER, search_id)
+    terrain_score_marix = combine_terrain_type_and_slope(terrain_type_matrix, slope_matrix, config.COMBINATION_METHOD,
+                                    config.ARRAY_FOLDER, search_id)
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
         f.write(f' done\n')
     end_time = time.perf_counter()
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
         f.write(f'Data processing done - Time: {end_time-start_time:.2f}\n\n')
+
+    # Logging terrain score matrix png
+    plot_array(array=terrain_score_marix, save=True, folder=config.LOG_DIR, title="Terrain score matrix")
+    
         
 
 
@@ -170,6 +180,7 @@ def process_model_data(search_id, lat, lng, d25, d50, d75, config):
         f.write(f'Simulation started...\n')
     # Branching simulation
     print("Branching simulation started...")
+    terrain_score_marix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_score_matrix.npy')
     start_time = time.perf_counter()
     red_points, yellow_points, green_points = branching_simulation(terrain_score_marix, search_id, d25, d50, d75, config)
     end_time = time.perf_counter()
