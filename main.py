@@ -23,7 +23,7 @@ if __name__ == "__main__":
     plot = False
 
     # Set to collect data from GeoNorge and OSM
-    collect = True
+    collect = False
     plot_collect = False
 
     ## preprocessing functions start ## -----------------------------------------------------------
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     # Branching simulation
     branching_sim = True
     plot_branching = True
-    scatter_endpoints = False                          # scatter endpoints in plot
+    scatter_endpoints = True                          # scatter endpoints in plot
     branching_sim_iterations = 2                    # number of iterations for each direction (iter * 8)
     b_range_factor = 1.25                 # factor for "max" travel distance                
     hull_alpha = 15                                        # "concavity" of the search area hull                                           # percentage of max distance for 50% ring
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     obstacle_threshold = 0.1                                # threshold for obstacle detection (0-1)
     d1 = 600
     d2 = 1600
-    d3 = 3200
+    d3 = 3700
 
     # Create map overlay layer with CRS from branching simulation results
     create_map_overlay = True if branching_sim else False
@@ -139,8 +139,8 @@ if __name__ == "__main__":
     # start_lat = 68.443336
     # start_lng = 17.527965
 
-    start_lat = 68.44515518547429
-    start_lng = 17.53628253936768
+    start_lat = 68.41311027355252
+    start_lng = 17.667732238769535
     
 
     #68.4383953706666, 17.427225974564415 narvik sentrum
@@ -405,7 +405,7 @@ if __name__ == "__main__":
 
         # convert sets to np arrays
         red_points = np.array(list(red_coords)[::5])
-        yellow_points = np.array(list(yellow_coords)[::5])
+        yellow_points = np.array(list(yellow_coords)[::3])
         green_points = np.array(list(green_coords)[::2])
 
         last_cutoff_points = np.array(list(last_cutoff)[::5])

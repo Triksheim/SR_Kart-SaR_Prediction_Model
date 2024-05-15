@@ -545,9 +545,9 @@ def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_
             
             # Branching multipliers based on energy left and distance params
             if energy_left > initial_move_resource - ring_25:
-                random_branch_multiplier = 100 if ring_25 <= 100 else 20
+                random_branch_multiplier = 60 if ring_25 <= 200 else 20
             elif energy_left > initial_move_resource - ring_50:
-                random_branch_multiplier = 50 if ring_50 <= 300 else 20
+                random_branch_multiplier = 40 if ring_50 <= 500 else 20
             elif energy_left > initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
                 random_branch_multiplier = 10
             else:
@@ -698,8 +698,8 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
 
     # convert sets to np arrays
     red_points = np.array(list(red_coords)[::5])
-    yellow_points = np.array(list(yellow_coords)[::5])
-    green_points = np.array(list(green_coords)[::2])
+    yellow_points = np.array(list(yellow_coords)[::3])
+    green_points = np.array(list(green_coords))
 
     return red_points, yellow_points, green_points
 
