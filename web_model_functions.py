@@ -9,6 +9,7 @@ try:
         branching_simulation,
         create_map_layer,
         calculate_map_extension,
+        create_search_sectors_with_polygons
     )
     from utility import (
         plot_array,
@@ -28,6 +29,7 @@ except ImportError:
         branching_simulation,
         create_map_layer,
         calculate_map_extension,
+        create_search_sectors_with_polygons
     )
     from .utility import (
         plot_array,
@@ -39,6 +41,7 @@ except ImportError:
 
 import time
 import numpy as np
+import geopandas as gpd
 
 
 
@@ -66,6 +69,24 @@ def start_model(search_id, lat, lng, d25, d50, d75, base_dir):
     layers = process_model_data(search_id, lat, lng, d25, d50, d75, config)
     return layers
 
+
+def generate_search_sectors(search_id, lat, lng, base_dir):
+    print(f'Generating search sectors...')
+    config = ModelConfig(base_dir)
+    terrain_score_matrix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_score_matrix.npy')
+    coords = (lat, lng)
+
+    gdf = gpd.read_file(f'{config.OVERLAY_FOLDER}id{search_id}_red_{lat}_{lng}_EPSG4326.geojson')
+    hull_polygon = gdf.geometry[0]
+    crs = 'EPSG:4326'
+
+
+    sector_polygons = create_search_sectors_with_polygons(
+        terrain_score_matrix, coords, hull_polygon, config.SECTOR_MAX_SIZE,
+        config.REDUCTION_FACTOR, crs, config.SECTOR_FOLDER, search_id)
+    
+    print(f'Sectors created: {len(sector_polygons)}')
+    return sector_polygons
 
 
 

@@ -6,10 +6,12 @@ class ModelConfig:
         self.ARRAY_FOLDER = f'{self.BASE_DIR}array/'
         self.OVERLAY_FOLDER = f'{self.BASE_DIR}overlays/'
         self.LOG_DIR = f'{self.BASE_DIR}logs/'
+        self.SECTOR_FOLDER = f'{self.BASE_DIR}{self.OVERLAY_FOLDER}sectors/'
         
 
         self.SQUARE_RADIUS = 500  # 1000m x 1000m square
         self.EXTRA_MAP_SIZE = 0.5  # 50% extra map size
+        self.SECTOR_MAX_SIZE = 80_000  # 80.000 m^2
 
         self.D25 = d25
         self.D50 = d50

@@ -556,3 +556,55 @@ def plot_branching_result(terrain_score_matrix, concave_hull_r, concave_hull_y, 
         plt.close()
     else:
         plt.show()
+
+
+def create_square_polygon(center_x, center_y, side_length):
+    half_side = side_length / 2
+    # Define the corners of the square
+    corners = [
+        (center_x - half_side, center_y - half_side),
+        (center_x + half_side, center_y - half_side),
+        (center_x + half_side, center_y + half_side),
+        (center_x - half_side, center_y + half_side)
+    ]
+    return Polygon(corners)
+
+
+# def create_search_sectors_with_polygons(matrix, coords, hull_polygon, sector_size=50_000, reduction_factor=5, output_crs="EPSG:25833", folder='output/overlays/overlay', search_id=0):
+#     height, width = matrix.shape
+#     map_diameter = height * reduction_factor  # Meters
+#     distance_per_index = map_diameter / height  # Meters per index in the matrix
+#     lat, lng = coords
+#     center_x, center_y = transform_coordinates_to_utm(lat, lng)
+
+#     sector_side_length_m = np.sqrt(sector_size)
+#     sector_side_length_idx = int(sector_side_length_m / reduction_factor)
+
+#     sector_polygons = []
+
+#     for i in range(0, height, sector_side_length_idx):
+#         for j in range(0, width, sector_side_length_idx):
+#             sector_center_x_idx = j + sector_side_length_idx / 2
+#             sector_center_y_idx = i + sector_side_length_idx / 2
+
+#             x_meter = (sector_center_x_idx - width / 2) * distance_per_index
+#             y_meter = ((height - sector_center_y_idx) - height / 2) * distance_per_index
+
+#             sector_center_x_geo, sector_center_y_geo = center_x + x_meter, center_y + y_meter
+
+#             square_polygon = create_square_polygon(sector_center_x_geo, sector_center_y_geo, sector_side_length_m)
+
+#             # Check for intersection with the freeform search area polygon
+#             if hull_polygon.intersects(square_polygon):
+#                 sector_polygons.append(square_polygon)
+
+#     base_crs = 'EPSG:25833'
+#     gdf = gpd.GeoDataFrame(index=range(len(sector_polygons)), crs=base_crs, geometry=sector_polygons)
+#     gdf.to_crs(output_crs, inplace=True)
+
+#     for idx, polygon in enumerate(gdf.geometry):
+#         gdf_single = gpd.GeoDataFrame(index=[0], crs=output_crs, geometry=[polygon])
+#         gdf_single.to_file(f'{folder}id{search_id}_sector_{idx}_EPSG{output_crs[5:]}.geojson', driver='GeoJSON')
+#         print(f'Sector {idx} saved to {folder}id{search_id}_sector_{idx}_EPSG{output_crs[5:]}.geojson')
+
+#     return gdf

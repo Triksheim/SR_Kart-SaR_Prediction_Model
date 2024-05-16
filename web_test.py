@@ -2,14 +2,14 @@ from web_model_functions import *
 import os
 
 
-search_id = 76
+search_id = 101
 lat = 68.443336
 lng = 17.527965
 # lat = 68.26615067072053
 # lng = 14.537723823348557
-d25 = 1200
-d50 = 2500
-d75 = 3600
+d25 = 100
+d50 = 300
+d75 = 600
 
 
 
@@ -20,6 +20,7 @@ os.makedirs(base_dir_id, exist_ok=False)
 os.makedirs(f'{base_dir_id}array/', exist_ok=False)
 os.makedirs(f'{base_dir_id}overlays/', exist_ok=False)
 os.makedirs(f'{base_dir_id}logs/', exist_ok=False)
+os.makedirs(f'{base_dir_id}overlays/sectors', exist_ok=False)
 
 
 
@@ -28,3 +29,5 @@ os.makedirs(f'{base_dir_id}logs/', exist_ok=False)
 
 collect_model_data(search_id, lat, lng, d25, d50, d75, base_dir_id)
 start_model(search_id,lat, lng, d25,d50,d75, base_dir_id)
+
+generate_search_sectors(search_id, lat, lng, base_dir_id)
