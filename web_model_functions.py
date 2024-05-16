@@ -70,13 +70,22 @@ def start_model(search_id, lat, lng, d25, d50, d75, base_dir):
     return layers
 
 
-def generate_search_sectors(search_id, lat, lng, base_dir):
+def generate_search_sectors(search_id, lat, lng, base_dir, bounds=None):
     print(f'Generating search sectors...')
     config = ModelConfig(base_dir)
+    logfile = f'{config.LOG_DIR}logfile.txt'
+
+    with open(logfile, 'a') as f:
+        f.write(f'{time.ctime()}: Generating search sectors...')
+
     terrain_score_matrix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_score_matrix.npy')
     coords = (lat, lng)
 
-    gdf = gpd.read_file(f'{config.OVERLAY_FOLDER}id{search_id}_red_{lat}_{lng}_EPSG4326.geojson')
+    if bounds:
+        gdf = gpd.GeoDataFrame(index=0, geometry=bounds)
+    else:
+        gdf = gpd.read_file(f'{config.OVERLAY_FOLDER}id{search_id}_red_{lat}_{lng}_EPSG4326.geojson')
+
     gdf.to_crs('EPSG:25833', inplace=True)
     hull_polygon = gdf.geometry[0]
 
@@ -89,6 +98,9 @@ def generate_search_sectors(search_id, lat, lng, base_dir):
         terrain_score_matrix, coords, hull_polygon, config.SECTOR_MAX_SIZE,
         config.REDUCTION_FACTOR, crs, config.SECTOR_FOLDER, search_id)
     
+    with open(logfile, 'a') as f:
+        f.write(f' done\n')
+
     print(f'Sectors created: {len(sector_polygons)}')
     return sector_polygons
 
@@ -232,7 +244,7 @@ def process_model_data(search_id, lat, lng, d25, d50, d75, config: ModelConfig):
 
 
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
-        f.write(f'Simulation started...\n')
+        f.write(f'Simulation started... ')
     # Branching simulation
     print("Branching simulation started...")
     terrain_score_marix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_score_matrix.npy')
@@ -240,7 +252,7 @@ def process_model_data(search_id, lat, lng, d25, d50, d75, config: ModelConfig):
     red_points, yellow_points, green_points = branching_simulation(terrain_score_marix, search_id, d25, d50, d75, config)
     end_time = time.perf_counter()
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
-        f.write(f'Simulation done - Time: {end_time-start_time:.2f}\n\n')
+        f.write(f'\nSimulation done - Time: {end_time-start_time:.2f}\n\n')
 
 
 

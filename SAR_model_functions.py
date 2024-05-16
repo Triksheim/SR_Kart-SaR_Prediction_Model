@@ -667,7 +667,7 @@ def create_slope_matrix(height_matrix, norm_cap, square_factor, folder, search_i
     return inv_slope_matrix
 
 def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config):
-    
+    logfile = f'{config.LOG_DIR}logfile.txt'
     worse_terrain_threshold = config.TERRAIN_CHANGE_THRESHOLD
     obstacle_threshold = config.OBSTACLE_THRESHOLD
     random_branching_chance = config.RANDOM_FACTOR
@@ -691,6 +691,9 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
     last_cutoff = set()
     sets = (green_coords, yellow_coords, red_coords, branches_log, last_cutoff)
 
+    step_percentage = 100 / (config.ITERATIONS * 8)
+    completion_percentage = 0
+
     #start_time = time.perf_counter()
     for n in range(config.ITERATIONS):
         curr_dir = 1
@@ -699,6 +702,14 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
                 move_direction = (i, j)
                 if move_direction != (0, 0):
                     print(f'Iteration {n+1}/{config.ITERATIONS}, Direction {curr_dir}/{8}')
+                    log_step_back = len(str(completion_percentage)) + 1
+                    with open(logfile, 'rb+') as f:
+                        f.seek(-log_step_back, 2)
+                        text = f'{completion_percentage}%'
+                        # write the text as binary data
+                        f.write(text.encode())
+                        
+
                     curr_dir += 1
                     branches_log = set() # reset branches
                     sets = (green_coords, yellow_coords, red_coords, branches_log, last_cutoff)
