@@ -1,11 +1,39 @@
 try:
-    from SAR_model_functions import terrain_encoding, add_railway_data_to_terrain, add_building_data_to_terrain, add_trails_data_to_terrain, create_slope_matrix, combine_terrain_type_and_slope, branching_simulation, create_map_layer, calculate_map_extension
-    from utility import plot_array, create_height_array, create_terrain_RGB_array
+    from SAR_model_functions import (
+        terrain_encoding,
+        add_railway_data_to_terrain,
+        add_building_data_to_terrain,
+        add_trails_data_to_terrain,
+        create_slope_matrix,
+        combine_terrain_type_and_slope,
+        branching_simulation,
+        create_map_layer,
+        calculate_map_extension,
+    )
+    from utility import (
+        plot_array,
+        create_height_array,
+        create_terrain_RGB_array,
+    )
     from geo_services import get_all_geo_data
     from constants import ModelConfig
-except:
-    from .SAR_model_functions import terrain_encoding, add_railway_data_to_terrain, add_building_data_to_terrain, add_trails_data_to_terrain, create_slope_matrix, combine_terrain_type_and_slope, branching_simulation, create_map_layer, calculate_map_extension
-    from .utility import plot_array, create_height_array, create_terrain_RGB_array
+except ImportError:
+    from .SAR_model_functions import (
+        terrain_encoding,
+        add_railway_data_to_terrain,
+        add_building_data_to_terrain,
+        add_trails_data_to_terrain,
+        create_slope_matrix,
+        combine_terrain_type_and_slope,
+        branching_simulation,
+        create_map_layer,
+        calculate_map_extension,
+    )
+    from .utility import (
+        plot_array,
+        create_height_array,
+        create_terrain_RGB_array,
+    )
     from .geo_services import get_all_geo_data
     from .constants import ModelConfig
 

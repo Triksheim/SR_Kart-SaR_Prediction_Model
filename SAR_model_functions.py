@@ -1,8 +1,21 @@
 try:
-    from utility import matrix_value_padding, normalize_component, compute_concave_hull_from_points, create_polygon_map_overlay, plot_branching_result, normalize_array    
-except:
-    from .utility import matrix_value_padding, normalize_component, compute_concave_hull_from_points, create_polygon_map_overlay, plot_branching_result, normalize_array
-    
+    from utility import (
+        matrix_value_padding,
+        normalize_component,
+        compute_concave_hull_from_points,
+        create_polygon_map_overlay,
+        plot_branching_result,
+        normalize_array,
+    )
+except ImportError:
+    from .utility import (
+        matrix_value_padding,
+        normalize_component,
+        compute_concave_hull_from_points,
+        create_polygon_map_overlay,
+        plot_branching_result,
+        normalize_array,
+    )
 import numpy as np
 import math
 import random
