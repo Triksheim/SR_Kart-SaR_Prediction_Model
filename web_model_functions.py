@@ -77,7 +77,11 @@ def generate_search_sectors(search_id, lat, lng, base_dir):
     coords = (lat, lng)
 
     gdf = gpd.read_file(f'{config.OVERLAY_FOLDER}id{search_id}_red_{lat}_{lng}_EPSG4326.geojson')
+    gdf.to_crs('EPSG:25833', inplace=True)
     hull_polygon = gdf.geometry[0]
+
+    #print(f'{hull_polygon=}')
+
     crs = 'EPSG:4326'
 
 

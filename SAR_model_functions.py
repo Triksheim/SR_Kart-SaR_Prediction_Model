@@ -792,12 +792,12 @@ def create_search_sectors_with_polygons(matrix, coords, hull_polygon, sector_siz
     gdf = gpd.GeoDataFrame(index=range(len(sector_polygons)), crs=base_crs, geometry=sector_polygons)
     gdf.to_crs(output_crs, inplace=True)
 
-    sector_polygons = []
+    intersected_sector_polygons = []
 
     for idx, polygon in enumerate(gdf.geometry):
         gdf_single = gpd.GeoDataFrame(index=[0], crs=output_crs, geometry=[polygon])
-        sector_polygons.append(gdf_single.geometry[0])
+        intersected_sector_polygons.append(gdf_single.geometry[0])
         gdf_single.to_file(f'{folder}id{search_id}_sector_{idx}_EPSG{output_crs[5:]}.geojson', driver='GeoJSON')
         #print(f'Sector {idx} saved to {folder}id{search_id}_sector_{idx}_EPSG{output_crs[5:]}.geojson')
 
-    return sector_polygons
+    return intersected_sector_polygons

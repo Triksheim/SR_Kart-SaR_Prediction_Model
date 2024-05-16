@@ -8,6 +8,7 @@ terrain_score_matrix = np.load(f'output/array/id0_terrain_score_matrix.npy')
 gdf = gpd.read_file(f'output/overlays/id0_red_68.443336_17.527965_EPSG4326.geojson')
 gdf.to_crs('EPSG:25833', inplace=True)
 hull_polygon = gdf.geometry[0]
+print(f'{hull_polygon=}')
 
 sector_max_size = 80_000 # m^2
 redcution_factor = 5

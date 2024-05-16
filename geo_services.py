@@ -357,7 +357,7 @@ def get_trail_map_osm(utm33_bbox, folder="output/", reduction_factor=5, search_i
     # Overpass API query
     overpass_url = "http://overpass-api.de/api/interpreter"
     bbox_str = f"{wsg84_bbox[1]},{wsg84_bbox[0]},{wsg84_bbox[3]},{wsg84_bbox[2]}"  # min_lat, min_lon, max_lat, max_lon
-    #print(bbox_str)
+    print(f'Request to Overpass API for trails: {overpass_url}')
     overpass_query = f"""
     [out:json];
     (
@@ -443,7 +443,7 @@ def get_buildings_osm(utm33_bbox, folder="output/", reduction_factor=5, search_i
     # Overpass API query
     overpass_url = "http://overpass-api.de/api/interpreter"
     bbox_str = f"{wsg84_bbox[1]},{wsg84_bbox[0]},{wsg84_bbox[3]},{wsg84_bbox[2]}"  # min_lat, min_lon, max_lat, max_lon
-    #print(bbox_str)
+    print(f'Request to Overpass API for buildings: {overpass_url}')
     overpass_query = f"""
     [out:json];
     (
@@ -526,6 +526,8 @@ def get_railways_osm(utm33_bbox, folder="output/", reduction_factor=5, search_id
     min_wsg = transform_coords_crs(utm33_bbox[0], utm33_bbox[1], 25833, 4326)
     max_wsg = transform_coords_crs(utm33_bbox[2], utm33_bbox[3], 25833, 4326)
     wsg84_bbox = (min_wsg[0], min_wsg[1], max_wsg[0], max_wsg[1])
+
+    print(f'Request to Overpass API for railways: http://overpass-api.de/api/interpreter')
 
     # Overpass API query
     railway_query = f"""

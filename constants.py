@@ -6,7 +6,7 @@ class ModelConfig:
         self.ARRAY_FOLDER = f'{self.BASE_DIR}array/'
         self.OVERLAY_FOLDER = f'{self.BASE_DIR}overlays/'
         self.LOG_DIR = f'{self.BASE_DIR}logs/'
-        self.SECTOR_FOLDER = f'{self.BASE_DIR}{self.OVERLAY_FOLDER}sectors/'
+        self.SECTOR_FOLDER = f'{self.OVERLAY_FOLDER}sectors/'
         
 
         self.SQUARE_RADIUS = 500  # 1000m x 1000m square
