@@ -1,10 +1,3 @@
-try:
-    from sarModel.modelFunctions.constants import *
-    
-except:
-    from constants import *
-    
-
 
 import pyproj
 import rasterio

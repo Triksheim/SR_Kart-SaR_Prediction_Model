@@ -1,14 +1,16 @@
 try:
-    from sarModel.modelFunctions.SAR_model_functions import *
-    from sarModel.modelFunctions.geo_services import *
-    from sarModel.modelFunctions.constants import *
+    from SAR_model_functions import terrain_encoding, add_railway_data_to_terrain, add_building_data_to_terrain, add_trails_data_to_terrain, create_slope_matrix, combine_terrain_type_and_slope, branching_simulation, create_map_layer, calculate_map_extension
+    from utility import plot_array, create_height_array, create_terrain_RGB_array
+    from geo_services import get_all_geo_data
+    from constants import ModelConfig
 except:
-    from SAR_model_functions import *
-    from geo_services import *
-    from constants import *
-
+    from .SAR_model_functions import terrain_encoding, add_railway_data_to_terrain, add_building_data_to_terrain, add_trails_data_to_terrain, create_slope_matrix, combine_terrain_type_and_slope, branching_simulation, create_map_layer, calculate_map_extension
+    from .utility import plot_array, create_height_array, create_terrain_RGB_array
+    from .geo_services import get_all_geo_data
+    from .constants import ModelConfig
 
 import time
+import numpy as np
 
 
 
@@ -39,7 +41,7 @@ def start_model(search_id, lat, lng, d25, d50, d75, base_dir):
 
 
 
-def get_model_data(search_id, lat, lng, d25, d50, d75, config):
+def get_model_data(search_id, lat, lng, d25, d50, d75, config: ModelConfig):
     max_range = min(d75, 10000)
     map_extension = calculate_map_extension(max_range, config.SQUARE_RADIUS)
     print(f'{map_extension=}')
@@ -58,7 +60,7 @@ def get_model_data(search_id, lat, lng, d25, d50, d75, config):
 
 
 
-def process_model_data(search_id, lat, lng, d25, d50, d75, config):
+def process_model_data(search_id, lat, lng, d25, d50, d75, config: ModelConfig):
     print(f'Processing model data for id: {search_id}')
 
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:

@@ -1,10 +1,8 @@
 try:
-    from sarModel.modelFunctions.utility import *
-    from sarModel.modelFunctions.constants import *
+    from utility import matrix_value_padding, normalize_component, compute_concave_hull_from_points, create_polygon_map_overlay, plot_branching_result, normalize_array    
 except:
-    from utility import *
-    from constants import *
-
+    from .utility import matrix_value_padding, normalize_component, compute_concave_hull_from_points, create_polygon_map_overlay, plot_branching_result, normalize_array
+    
 import numpy as np
 import math
 import random

@@ -1,13 +1,13 @@
 try:
-    from sarModel.modelFunctions.utility import *
+    from utility import transform_coordinates_to_utm, calculate_bbox_utm, create_bbox_string, extract_tiff_from_multipart_response, create_composite_tiff, downsample_2d_array, matrix_value_padding, rasterize_gdf, create_composite_image, transform_coords_crs
 except:
-    from utility import *
-
+    from .utility import transform_coordinates_to_utm, calculate_bbox_utm, create_bbox_string, extract_tiff_from_multipart_response, create_composite_tiff, downsample_2d_array, matrix_value_padding, rasterize_gdf, create_composite_image, transform_coords_crs
 
 import requests
 from xml.etree import ElementTree as ET
 from io import BytesIO
 import time
+from PIL import Image
 from rasterio.transform import from_origin
 from rasterio.features import rasterize
 import numpy as np
