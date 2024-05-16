@@ -2,14 +2,14 @@ from web_model_functions import *
 import os
 
 
-search_id = 404
+search_id = 425
 lat = 68.443336
 lng = 17.527965
 # lat = 68.26615067072053
 # lng = 14.537723823348557
 d25 = 100
 d50 = 300
-d75 = 600
+d75 = 1500
 
 
 

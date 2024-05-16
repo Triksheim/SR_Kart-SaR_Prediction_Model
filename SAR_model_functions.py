@@ -691,8 +691,13 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
     last_cutoff = set()
     sets = (green_coords, yellow_coords, red_coords, branches_log, last_cutoff)
 
-    step_percentage = 100 / (config.ITERATIONS * 8)
+    step_percentage = round(100 / (config.ITERATIONS * 8))
     completion_percentage = 0
+
+    with open(logfile, 'ab') as f:
+        text = f'{completion_percentage}%'
+        f.write(text.encode())
+
 
     #start_time = time.perf_counter()
     for n in range(config.ITERATIONS):
@@ -702,19 +707,29 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
                 move_direction = (i, j)
                 if move_direction != (0, 0):
                     print(f'Iteration {n+1}/{config.ITERATIONS}, Direction {curr_dir}/{8}')
-                    log_step_back = len(str(completion_percentage)) + 1
-                    with open(logfile, 'rb+') as f:
-                        f.seek(-log_step_back, 2)
-                        text = f'{completion_percentage}%'
-                        # write the text as binary data
-                        f.write(text.encode())
-                        
-
                     curr_dir += 1
                     branches_log = set() # reset branches
                     sets = (green_coords, yellow_coords, red_coords, branches_log, last_cutoff)
                     branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_distance, max_distance, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
                     
+                    
+                    log_step_back = len(str(completion_percentage)) + 1
+                    completion_percentage += step_percentage
+                    with open(logfile, 'rb+') as f:
+                        f.seek(0, 2)  # Move to the end of the file
+                        file_size = f.tell()
+                        text = f'{completion_percentage}%'
+                        f.seek(max(0, file_size - log_step_back), 0)  # Move pointer back
+                        f.write(text.encode())  # Write the updated percentage
+    
+    with open(logfile, 'rb+') as f:
+        f.seek(0, 2)  # Move to the end of the file
+        file_size = f.tell()
+        text = f'100%\n'
+        log_step_back = len(text)
+        f.seek(max(0, file_size - log_step_back), 0)  # Move pointer back
+        f.write(text.encode())  # Write the final percentage
+
     #end_time = time.perf_counter()
 
 

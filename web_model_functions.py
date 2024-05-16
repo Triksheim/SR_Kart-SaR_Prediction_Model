@@ -244,7 +244,7 @@ def process_model_data(search_id, lat, lng, d25, d50, d75, config: ModelConfig):
 
 
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
-        f.write(f'Simulation started... ')
+        f.write(f'Simulation started...  ')
     # Branching simulation
     print("Branching simulation started...")
     terrain_score_marix = np.load(f'{config.ARRAY_FOLDER}id{search_id}_terrain_score_matrix.npy')
