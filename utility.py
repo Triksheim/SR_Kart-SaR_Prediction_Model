@@ -433,6 +433,7 @@ def create_polygon_map_overlay(matrix, coords, hull, color="red", output_crs="EP
             hull_polygon = Polygon(concave_hull_geo)
             # map polygon to coordinate reference system
             base_crs = 'EPSG:25833'
+            print(f'{hull_polygon=}')
             gdf = gpd.GeoDataFrame(index=[0], crs=base_crs, geometry=[hull_polygon])
             gdf.to_crs(output_crs, inplace=True)
             # save as GeoJSON

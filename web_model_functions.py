@@ -82,7 +82,7 @@ def generate_search_sectors(search_id, lat, lng, base_dir, bounds=None):
     coords = (lat, lng)
 
     if bounds:
-        gdf = gpd.GeoDataFrame(index=0, geometry=[bounds])
+        gdf = gpd.GeoDataFrame(index=[0], crs="EPSG:4326", geometry=[bounds])
     else:
         gdf = gpd.read_file(f'{config.OVERLAY_FOLDER}id{search_id}_red_{lat}_{lng}_EPSG4326.geojson')
 
