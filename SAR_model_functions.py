@@ -552,6 +552,9 @@ def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_
         if move_resource < initial_move_resource - ((ring_50 + ((initial_move_resource - ring_50)/2)) * 1.1) and (new_x, new_y) in last_cutoff:
             cnt_kill_3 += 1
             continue
+        # Stack limit
+        if len(stack) > 100:
+            continue
         
         if energy_left > 0:
             try:
