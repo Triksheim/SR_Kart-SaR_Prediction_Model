@@ -110,15 +110,15 @@ if __name__ == "__main__":
     branching_sim = True
     plot_branching = True
     scatter_endpoints = False                          # scatter endpoints in plot
-    branching_sim_iterations = 2                    # number of iterations for each direction (iter * 8)
+    branching_sim_iterations = 4                    # number of iterations for each direction (iter * 8)
     b_range_factor = 1.25                 # factor for "max" travel distance                
-    hull_alpha = 10                                       # "concavity" of the search area hull                                           # percentage of max distance for 50% ring
+    hull_alpha = 15                                       # "concavity" of the search area hull                                           # percentage of max distance for 50% ring
     terrain_change_threshold = 0.3                           # threshold for branching when large terrain change (0-1)
     random_branching_chance = 2                             # chance of random branching (n/10.000)
-    obstacle_threshold = 0.1                               # threshold for obstacle detection (0-1)
-    d1 = 1600
-    d2 = 2600
-    d3 = 5800
+    obstacle_threshold = 0.2                               # threshold for obstacle detection (0-1)
+    d1 = 600
+    d2 = 1600
+    d3 = 3200
 
     # Create map overlay layer with CRS from branching simulation results
     create_map_overlay = True if branching_sim else False
@@ -139,8 +139,8 @@ if __name__ == "__main__":
     # start_lat = 68.443336
     # start_lng = 17.527965
 
-    start_lat = 68.26615067072053
-    start_lng = 14.537723823348557
+    start_lat = 68.44115616527715
+    start_lng = 17.48180984530364
 
     #68.36350141129658, 17.46499570357339
 
@@ -150,6 +150,7 @@ if __name__ == "__main__":
     #67.31458155986105, 14.477247863863925  keiservarden
     #68.44333623319275, 17.52796511156201   pumpvannet
     #68.26615067072053, 14.537723823348557  nedre svolværvatnet, fra prototype
+    #68.44515518547429, 17.53628253936768  pumpvannet, problem spot
 
 
     ################### S E T T I N G S - E N D ###################
@@ -392,13 +393,11 @@ if __name__ == "__main__":
                 for j in range(-1, 2, 1):
                     move_direction = (i, j)
                     if move_direction != (0, 0):
-                        
+                        print(f'Iteration {n+1}/{branching_sim_iterations}, Direction {curr_dir}/{8}')
+                        curr_dir += 1
                         if time.perf_counter() - start_time > time_out:
                             print(f"Time out: {time_out} seconds")
                             break
-
-                        print(f'Iteration {n+1}/{branching_sim_iterations}, Direction {curr_dir}/{8}')
-                        curr_dir += 1
                         branches = set() # reset branches
                         sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
                         branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_energy, max_energy, sets, d25, d50, terrain_change_threshold, random_branching_chance, obstacle_threshold)
@@ -413,11 +412,11 @@ if __name__ == "__main__":
 
 
         # convert sets to np arrays
-        red_points = np.array(list(red_coords)[::5])
+        red_points = np.array(list(red_coords)[::10])
         yellow_points = np.array(list(yellow_coords)[::3])
         green_points = np.array(list(green_coords)[::2])
 
-        last_cutoff_points = np.array(list(last_cutoff)[::5])
+        last_cutoff_points = np.array(list(last_cutoff)[::10])
 
 
         print(f'{len(red_points)=}, {len(yellow_points)=}, {len(green_points)=}')

@@ -2,16 +2,16 @@ from web_model_functions import *
 import os
 
 
-search_id = 430
-lat = 68.443336
-lng = 17.527965
+search_id = 25
+lat = 68.44115616527715
+lng = 17.48180984530364
 # lat = 68.26615067072053
 # lng = 14.537723823348557
-d25 = 100
-d50 = 300
-d75 = 1500
+d25 = 600
+d50 = 1600
+d75 = 3200
 
-
+search_type = "Suicidal"
 
 base_dir = os.getcwd()
 base_dir_out = f'{base_dir}/output/'
@@ -28,6 +28,6 @@ os.makedirs(f'{base_dir_id}overlays/sectors', exist_ok=False)
 
 
 collect_model_data(search_id, lat, lng, d25, d50, d75, base_dir_id)
-start_model(search_id,lat, lng, d25,d50,d75, base_dir_id)
+start_model(search_id,lat, lng, d25,d50,d75, base_dir_id, search_type)
 
 generate_search_sectors(search_id, lat, lng, base_dir_id)

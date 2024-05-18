@@ -55,17 +55,26 @@ def collect_model_data(search_id, lat, lng, d25, d50, d75, base_dir):
     with open(logfile, 'w') as f:
         f.write(f'SAR logfile: {search_id=}, {lat=}, {lng=}\n\n')
 
-    get_model_data(search_id, lat, lng, d25, d50, d75, config)
+    try:
+        get_model_data(search_id, lat, lng, d25, d50, d75, config)
+    except Exception as e:
+        print(f'Error: {e}')
+        with open(logfile, 'a') as f:
+            f.write(f'\n\nError: {e}\n\n')
+            f.write(f'UNRESOLVEABLE ERROR OCCURED WHILE COLLECTING DATA.\nPLEASE END AND RESTART MODEL.\n\n')
+            
+
+        raise Exception(f'{e}')
+            
 
 # Run from webserver
-def start_model(search_id, lat, lng, d25, d50, d75, base_dir, search_type):
-    config = ModelConfig(base_dir, d25=d25, d50=d50, d75=d75)
+def start_model(search_id, lat, lng, d25, d50, d75, base_dir, search_type=None):
+    config = ModelConfig(base_dir=base_dir, winter=False, d25=d25, d50=d50, d75=d75, search_type=search_type)
+    print(f'{search_type=}')
     logfile = f'{config.LOG_DIR}logfile.txt'
     with open(logfile, 'a') as f:
         f.write(f'{config.config_str()}\n')
         
-
-
     layers = process_model_data(search_id, lat, lng, d25, d50, d75, config)
     return layers
 
@@ -117,7 +126,7 @@ def get_model_data(search_id, lat, lng, d25, d50, d75, config: ModelConfig):
         f.write(f'Distance paramters: {d25=}, {d50=}, {d75=}, {map_extension=}\n')
 
     start_time = time.perf_counter()
-    get_all_geo_data(search_id, lat, lng, config.SQUARE_RADIUS, map_extension, config.BASE_DIR, config.REDUCTION_FACTOR)
+    get_all_geo_data(search_id, lat, lng, config.SQUARE_RADIUS, map_extension, config.BASE_DIR, config.REDUCTION_FACTOR, config.LOG_FILE)
     end_time = time.perf_counter()
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
         f.write(f'Data collection done - Time: {end_time-start_time:.2f}\n\n')

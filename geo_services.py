@@ -39,7 +39,7 @@ from shapely.geometry import LineString
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, folder="output/", reduction_factor=5):
+def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, folder="output/", reduction_factor=5, log_file=None):
     """
     Retrieves and saves various mgeo data based on the given latitude and longitude coordinates.
 
@@ -69,7 +69,7 @@ def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, fo
     with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f'Requesting terrain type data...')   
     # get the terrain type map (saves tiff file)
-    get_terrain_type_map(map_squares_center_point, start_point, square_radius, folder, search_id)
+    get_terrain_type_map(map_squares_center_point, start_point, square_radius, folder, search_id, log_file)
     with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f' done\n')
 
@@ -78,7 +78,7 @@ def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, fo
     with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f'Requesting terrain height data...')
     # get the height map    (saves tiff file)
-    get_height_map_geonorge(map_squares_center_point, start_point, square_radius, folder, search_id)
+    get_height_map_geonorge(map_squares_center_point, start_point, square_radius, folder, search_id, log_file)
     with open(f'{folder}logs/logfile.txt', 'a') as f:
         f.write(f' done\n')
 
@@ -111,7 +111,7 @@ def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, fo
 
 
 
-def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=500, folder="output/", search_id=0):
+def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=500, folder="output/", search_id=0, log_file=None):
     """
     Retrieves height map data from a web service for a given set of map squares and saves a composite tiff to file.
 
@@ -141,6 +141,9 @@ def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=5
     min_size_expected = 4*(2*square_radius**2)
     print(f'Minimum size expected: {min_size_expected} bytes')
 
+    with open(log_file, 'a') as f:
+        f.write(f'{0}/{len(center_of_map_squares)}') 
+
     with ThreadPoolExecutor() as executor:
         print(f'Request to WCS: {url}')
         #for n, coords in reversed(list(enumerate(center_of_map_squares))):
@@ -163,7 +166,7 @@ def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=5
             future = executor.submit(wcs_request, url, params, min_size_limit=min_size_expected, n=n)
             futures.append(future)
             print(f'Request {n+1} submitted. Waiting for response...')
-            time.sleep(2)
+            time.sleep(0.5)
 
         # Wait for all futures to complete
         for n, future in enumerate(as_completed(futures)):
@@ -171,19 +174,21 @@ def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=5
             if response:
                 tiff_data.append(extract_tiff_from_multipart_response(response))
 
-                #print(f"{n+1}/{len(center_of_map_squares)}")
-
-                # # DEBUGGING
-                # filename = f'{n}.tif'
-                # filepath = f'{folder}/height_test/{filename}'
-                # data = [response.content]
-                # create_composite_tiff(data, filepath)
-
-                
-                # filename = f'{n}.txt'
-                # filepath = f'{folder}/height_test/{filename}'
-                # with open(filepath, 'wb') as f:
-                #     f.write(response.content)
+                if log_file:
+                    if n == 0:
+                        pass
+                        # with open(log_file, 'a') as f:
+                        #     f.write(f'{n+1}/{len(center_of_map_squares)}') 
+                    else:
+                        if n == 9 or n == 99 or n == 999:
+                            with open(log_file, 'a') as f:
+                                f.write(f' ')
+                        with open(log_file, 'rb+') as f:
+                            f.seek(0, 2)  # Move to the end of the file
+                            file_size = f.tell()
+                            text = f'{n+1}/{len(center_of_map_squares)}'
+                            f.seek(max(0, file_size - len(text)), 0)  # Move pointer back
+                            f.write(text.encode())  # Write the updated percentage
 
 
                 
@@ -252,7 +257,10 @@ def wcs_request(url, params, retry_limit=15, min_size_limit=100000, n=0):
 
         retry_count += 1
         print(f"Retrying request {n+1}. Attempts left: {retry_limit-retry_count}")
-        time.sleep(5)
+        if retry_count < retry_limit - 5:
+            time.sleep(1)
+        else:
+            time.sleep(5)
 
     raise Exception("Request failed. No attempts left.")
 
@@ -692,7 +700,7 @@ def wfs_request(url, params, retry_count=10):
 
 
 
-def get_terrain_type_map(center_for_map_squares, start_coords=("00.00","00.00"), sq_radius=500, folder="output/", search_id=0):
+def get_terrain_type_map(center_for_map_squares, start_coords=("00.00","00.00"), sq_radius=500, folder="output/", search_id=0, log_file=None):
     """
     Retrieves terrain type map from a WMS server based on the given parameters.
 
@@ -748,6 +756,21 @@ def get_terrain_type_map(center_for_map_squares, start_coords=("00.00","00.00"),
                 images.append(image)
                 tiff_data.append(response.content)
                 print(f"{n+1}/{len(center_for_map_squares)}")
+
+                if log_file:
+                    if n == 0:
+                        with open(log_file, 'a') as f:
+                            f.write(f'{n+1}/{len(center_for_map_squares)}')
+                    else:
+                        if n == 9 or n == 99 or n == 999:
+                            with open(log_file, 'a') as f:
+                                f.write(f' ')
+                        with open(log_file, 'rb+') as f:
+                            f.seek(0, 2)  # Move to the end of the file
+                            file_size = f.tell()
+                            text = f'{n+1}/{len(center_for_map_squares)}'
+                            f.seek(max(0, file_size - len(text)), 0)  # Move pointer back
+                            f.write(text.encode())  # Write the updated percentage
 
         # create composite tiff/png and save to file    
         if format == "image/tiff":

@@ -288,7 +288,7 @@ def movement(matrix, start_idx, move_dir, obstacle_threshold):
     try:
         # obstacle, step back
         if matrix[y, x] <= obstacle_threshold:
-            return (x0, y0), 1 / matrix[y0, x0]
+            return (x0, y0), 2 / matrix[y0, x0]
         
         # out of bounds in negative direction, step back and end
         if x < 0 or y < 0:
@@ -520,28 +520,44 @@ def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_
     green, yellow, red, branch_log, last_cutoff = sets   # referenced sets from main function
     stack = [(start_idx, move_dir, move_resource)]
     
+    start_time = time.perf_counter()
+    time_limit = 300
+
+    ring_25_threshold = initial_move_resource - ring_25
+    ring_50_threshold = initial_move_resource - ring_50
+    cutoff_threshold = initial_move_resource - (ring_50 + ((initial_move_resource - ring_50) / 2))
+
+
     while stack:
         current_idx, move_dir, move_resource = stack.pop()
         x, y = current_idx
-        
+
         if move_resource <= 0:
             red.add(current_idx)
             continue
         
+        # Stack limit
+        if len(stack) > 50:
+            continue
+
         # Movement
         (new_x, new_y), movement_cost = movement(matrix, current_idx, move_dir, obstacle_threshold)
         energy_left = move_resource - movement_cost
         
         # Save coords for relevant rings based on energy left
-        if move_resource > initial_move_resource - ring_25:
+        if move_resource > ring_25_threshold:
             green.add((new_x, new_y))
-        elif move_resource > initial_move_resource - ring_50:
+        elif move_resource > ring_50_threshold:
             yellow.add((new_x, new_y))
         else:
             red.add((new_x, new_y))
-            if move_resource > initial_move_resource - (ring_50 + ((initial_move_resource - ring_50)/2)):
+            if move_resource > cutoff_threshold:
                 last_cutoff.add((new_x, new_y))
         
+        # # Stack limit
+        # if len(stack) > 50:
+        #     continue
+
         # Branches kill offs
         if move_resource < initial_move_resource - (ring_25 * 1.1) and (new_x, new_y) in green:
             cnt_kill_1 += 1
@@ -552,15 +568,14 @@ def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_
         if move_resource < initial_move_resource - ((ring_50 + ((initial_move_resource - ring_50)/2)) * 1.1) and (new_x, new_y) in last_cutoff:
             cnt_kill_3 += 1
             continue
-        # Stack limit
-        if len(stack) > 50:
-            continue
+       
         
         if energy_left > 0:
-            try:
+            # Check terrain change
+            if 0 <= new_y < len(matrix) and 0 <= new_x < len(matrix[0]):
                 terrain_change = matrix[new_y, new_x] - matrix[y, x]
-            except:
-                terrain_change = 10  # probably out of bounds
+            else:
+                terrain_change = 10    # Out of bounds
             
             # Branching multipliers based on energy left and distance params
             if energy_left > initial_move_resource - ring_25:
@@ -600,6 +615,12 @@ def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_
             
             # Random branching
             elif (random_branch_multiplier * random_branching_chance) > random.randint(1, 10000) and (new_x, new_y) not in branch_log:
+                
+                # Time out check here to avoid checking for each loop
+                if time.perf_counter() - start_time > time_limit:
+                    print(f'Time limit reached.')
+                    break
+                
                 sx, sy = move_dir
                 new_directions = [
                     (sx, sy),  # forward
@@ -617,15 +638,23 @@ def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_
             elif (x, y) == (new_x, new_y):
                 sx, sy = move_dir
                 random_num = random.randint(1, 4)
-                if random_num == 1:
-                    new_dir = (sy, -sx)  # right
-                elif random_num == 2:
-                    new_dir = (-sy, sx)  # left
-                elif random_num == 3:
-                    new_dir = (normalize_component(sx + sy), normalize_component(sy - sx))  # right diagonal
-                else:
-                    new_dir = (normalize_component(sx - sy), normalize_component(sy + sx))  # left diagonal
+                # if random_num == 1:
+                #     new_dir = (sy, -sx)  # right
+                # elif random_num == 2:
+                #     new_dir = (-sy, sx)  # left
+                # elif random_num == 3:
+                #     new_dir = (normalize_component(sx + sy), normalize_component(sy - sx))  # right diagonal
+                # else:
+                #     new_dir = (normalize_component(sx - sy), normalize_component(sy + sx))  # left diagonal
                 
+                new_dir = {
+                    1: (sy, -sx),
+                    2: (-sy, sx),
+                    3: (normalize_component(sx + sy), normalize_component(sy - sx)),
+                    4: (normalize_component(sx - sy), normalize_component(sy + sx))
+                }[random_num]
+
+
                 stack.append(((new_x, new_y), new_dir, energy_left))
             
             # Continue in the same direction
@@ -654,8 +683,12 @@ def calculate_map_extension(max_distance, square_radius):
         map_extension = 3
     elif map_size <= 9*map_square:
         map_extension = 4
-    else:
+    elif map_size <= 11*map_square:
         map_extension = 5
+    elif map_size <= 13*map_square:
+        map_extension = 6
+    else:
+        map_extension = 7
     
     return map_extension
 
@@ -694,15 +727,16 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
     last_cutoff = set()
     sets = (green_coords, yellow_coords, red_coords, branches_log, last_cutoff)
 
-    step_percentage = round(100 / (config.ITERATIONS * 8))
+    step_percentage = (100 / (config.ITERATIONS * 8))
     completion_percentage = 0
 
     with open(logfile, 'ab') as f:
         text = f'{completion_percentage}%'
         f.write(text.encode())
 
+    time_limit = 300
 
-    #start_time = time.perf_counter()
+    sim_start_time = time.perf_counter()
     for n in range(config.ITERATIONS):
         curr_dir = 1
         for i in range(-1, 2, 1):
@@ -711,24 +745,28 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
                 if move_direction != (0, 0):
                     print(f'Iteration {n+1}/{config.ITERATIONS}, Direction {curr_dir}/{8}')
                     curr_dir += 1
+                    if time.perf_counter() - sim_start_time > time_limit:
+                        print(f'Time limit reached.')
+                        break
+
                     branches_log = set() # reset branches
                     sets = (green_coords, yellow_coords, red_coords, branches_log, last_cutoff)
                     branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_distance, max_distance, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
                     
                     
-                    log_step_back = len(str(completion_percentage)) + 1
+                    log_step_back = len(f'{completion_percentage:.0f}%')
                     completion_percentage += step_percentage
                     with open(logfile, 'rb+') as f:
                         f.seek(0, 2)  # Move to the end of the file
                         file_size = f.tell()
-                        text = f'{completion_percentage}%'
+                        text = f'{completion_percentage:.0f}%'
                         f.seek(max(0, file_size - log_step_back), 0)  # Move pointer back
                         f.write(text.encode())  # Write the updated percentage
     
     with open(logfile, 'rb+') as f:
         f.seek(0, 2)  # Move to the end of the file
         file_size = f.tell()
-        text = f' 100%\n'
+        text = f'. 100%\n'
         log_step_back = len(text)
         f.seek(max(0, file_size - log_step_back), 0)  # Move pointer back
         f.write(text.encode())  # Write the final percentage
@@ -742,9 +780,9 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
     #debug_stats_print()
 
     # convert sets to np arrays
-    red_points = np.array(list(red_coords)[::5])
+    red_points = np.array(list(red_coords)[::10])
     yellow_points = np.array(list(yellow_coords)[::3])
-    green_points = np.array(list(green_coords))
+    green_points = np.array(list(green_coords)[::2])
 
     return red_points, yellow_points, green_points
 
@@ -755,7 +793,7 @@ def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_poin
     
     
     plot_branching_result(terrain_score_matrix, concave_hull_r, concave_hull_y, concave_hull_g, config, save=True)
-
+    #plot_branching_result(terrain_score_matrix, concave_hull_r, concave_hull_y, concave_hull_g, config, save=False)
 
     polygon_75 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", output_crs="EPSG:4326", folder=folder, reduction_factor=config.REDUCTION_FACTOR, search_id=search_id)
     polygon_50 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", output_crs="EPSG:4326", folder=folder, reduction_factor=config.REDUCTION_FACTOR, search_id=search_id)
