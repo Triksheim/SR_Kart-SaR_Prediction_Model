@@ -94,7 +94,7 @@ class ModelConfig:
             "Dementia": 0.30,
             "Autism": 0.10,
             "BerryPicker": 0.05,
-            "Children": 0.05,
+            "Children": 0.10,
             "Hiker": 0.20,
             "Hunter": 0.05,
         }
