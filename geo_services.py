@@ -252,6 +252,7 @@ def wcs_request(url, params, retry_limit=15, min_size_limit=100000, n=0):
                 
             else:
                 print('Response unsuccessful. Content-Type is not multipart.')  # Unexpected response 
+                continue
         else:
             print(f"Request failed with status code: {response.status_code}")
 
