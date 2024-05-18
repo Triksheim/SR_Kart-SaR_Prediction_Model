@@ -234,10 +234,10 @@ def wcs_request(url, params, retry_limit=15, min_size_limit=100000, n=0):
             if 'multipart' in content_type: # Check if the response is multipart xml
                 
                 
-                if len(response.content) < min_size_limit and retry_count < retry_limit-1:
+                if len(response.content) < min_size_limit and retry_count <= retry_limit-5:
                     print(f'Error Request {n+1}: Insufficient data. {len(response.content)}/{min_size_limit} bytes')
-                # elif len(response.content) < min_size_limit/2 and retry_count < 14:
-                #     print(f'Error Request {n+1}: Insufficient data. {len(response.content)}/{min_size_limit/2} bytes')
+                elif len(response.content) < min_size_limit/4 and retry_count <= retry_limit-1:
+                     print(f'Error Request {n+1}: Insufficient data. {len(response.content)}/{min_size_limit/4} bytes')
 
                 else:
                     print(f'Request {n+1} successful. Count: {len(response.content)} bytes')
