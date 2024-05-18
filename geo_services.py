@@ -236,7 +236,7 @@ def wcs_request(url, params, retry_limit=15, min_size_limit=100000, n=0):
                 
                 if len(response.content) < min_size_limit and retry_count <= retry_limit-5:
                     print(f'Error Request {n+1}: Insufficient data. {len(response.content)}/{min_size_limit} bytes')
-                elif len(response.content) < min_size_limit/4 and retry_count <= retry_limit-1:
+                elif len(response.content) < min_size_limit/4 and retry_count <= retry_limit-2:
                      print(f'Error Request {n+1}: Insufficient data. {len(response.content)}/{min_size_limit/4} bytes')
 
                 else:
@@ -251,7 +251,8 @@ def wcs_request(url, params, retry_limit=15, min_size_limit=100000, n=0):
                     return response
                 
             else:
-                print('Response unsuccessful. Content-Type is not multipart.')  # Unexpected response 
+                print('Response unsuccessful. Content-Type is not multipart.')  # Unexpected response
+                time.sleep(2) 
                 continue
         else:
             print(f"Request failed with status code: {response.status_code}")
