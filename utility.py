@@ -7,8 +7,8 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 import numpy as np
-from shapely.geometry import Polygon, MultiLineString, MultiPolygon
-from shapely.ops import polygonize, unary_union
+from shapely.geometry import Polygon, MultiLineString, MultiPolygon, MultiPoint, LineString, GeometryCollection
+from shapely.ops import polygonize, unary_union, cascaded_union, polygonize_full, nearest_points
 from scipy.spatial import Delaunay
 import geopandas as gpd
 from rasterio.features import rasterize
@@ -382,10 +382,93 @@ def compute_concave_hull_from_points(points, alpha):
     m = MultiLineString(edge_points)
     triangles = list(polygonize(m))
     concave_hull = unary_union(triangles)
+    
+    #print(f'First:{concave_hull.geom_type=}')
+
+    # Ensure the result is a single polygon
+    if concave_hull.geom_type == 'GeometryCollection' or isinstance(concave_hull, MultiPolygon):
+        concave_hull = connect_polygons_with_thin_polygons(concave_hull)
+        concave_hull = iterative_merge_close_polygons(concave_hull)
+
+    #print(f'End: {concave_hull.geom_type=}')
+
     return concave_hull
+
+
+def connect_polygons_with_thin_polygons(multipolygon, width=1):
+    if not isinstance(multipolygon, MultiPolygon):
+        return multipolygon
+    
+    polygons = list(multipolygon.geoms)
+    combined = polygons[0]
+    for poly in polygons[1:]:
+        # Find the nearest points between the two polygons
+        p1, p2 = nearest_points(combined, poly)
+        
+        if p1.equals(p2):
+            # Skip if the nearest points are the same
+            continue
+        
+        # Create a thin connecting polygon (rectangular strip)
+        dx = p2.x - p1.x
+        dy = p2.y - p1.y
+        length = np.sqrt(dx**2 + dy**2)
+        
+        if length == 0:
+            # If length is zero, skip to avoid division by zero
+            continue
+        
+        offset_x = width * dy / length / 2
+        offset_y = width * dx / length / 2
+        thin_polygon = Polygon([
+            (p1.x - offset_x, p1.y + offset_y),
+            (p1.x + offset_x, p1.y - offset_y),
+            (p2.x + offset_x, p2.y - offset_y),
+            (p2.x - offset_x, p2.y + offset_y),
+        ])
+        
+        # Combine the current combined polygon with the new polygon and the connecting thin polygon
+        combined = unary_union([combined, poly, thin_polygon])
+    
+    # Handle the case where the result is a GeometryCollection
+    if isinstance(combined, GeometryCollection):
+        polygons = [geom for geom in combined.geoms if isinstance(geom, Polygon)]
+        if polygons:
+            combined = unary_union(polygons)
+    
+    return combined
+
+
+
+
+def iterative_merge_close_polygons(multipolygon, max_buffer_distance=1.0, step=0.1):
+    if isinstance(multipolygon, MultiPolygon):
+        buffer_distance = step
+        merged_polygon = multipolygon
+        
+        while merged_polygon.geom_type == 'MultiPolygon' and buffer_distance <= max_buffer_distance:
+            buffered_polygons = [polygon.buffer(buffer_distance) for polygon in merged_polygon.geoms]
+            merged_polygon = unary_union(buffered_polygons)
+            buffer_distance += step
+        
+        if merged_polygon.geom_type == 'Polygon':
+            # Remove the buffer to return to original size
+            merged_polygon = merged_polygon.buffer(-buffer_distance + step)
+        
+        return merged_polygon
+    
+    return multipolygon
+
+
+
+
+
 
 def get_polygon_coords_from_hull(hull):
     # handling both Polygon and MultiPolygon cases
+
+    #print(f'{hull.geom_type=}')
+
     if isinstance(hull, MultiPolygon):
         largest_polygon = None
         max_area = 0
@@ -403,6 +486,7 @@ def get_polygon_coords_from_hull(hull):
         x, y = hull.exterior.xy
         return x, y
     else:
+        
         print("The resulting geometry is neither a Polygon nor a MultiPolygon.")
 
 

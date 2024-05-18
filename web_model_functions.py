@@ -58,7 +58,7 @@ def collect_model_data(search_id, lat, lng, d25, d50, d75, base_dir):
     get_model_data(search_id, lat, lng, d25, d50, d75, config)
 
 # Run from webserver
-def start_model(search_id, lat, lng, d25, d50, d75, base_dir):
+def start_model(search_id, lat, lng, d25, d50, d75, base_dir, search_type):
     config = ModelConfig(base_dir, d25=d25, d50=d50, d75=d75)
     logfile = f'{config.LOG_DIR}logfile.txt'
     with open(logfile, 'a') as f:
@@ -252,7 +252,7 @@ def process_model_data(search_id, lat, lng, d25, d50, d75, config: ModelConfig):
     red_points, yellow_points, green_points = branching_simulation(terrain_score_marix, search_id, d25, d50, d75, config)
     end_time = time.perf_counter()
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
-        f.write(f'\nSimulation done - Time: {end_time-start_time:.2f}\n\n')
+        f.write(f'Simulation done - Time: {end_time-start_time:.2f}\n\n')
 
 
 

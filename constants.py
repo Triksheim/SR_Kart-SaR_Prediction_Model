@@ -33,7 +33,7 @@ class ModelConfig:
         self.TERRAIN_CHANGE_THRESHOLD = 0.3
         self.OBSTACLE_THRESHOLD = 0.1
         self.RANDOM_FACTOR = 2   
-        self.HULL_ALPHA = 15
+        self.HULL_ALPHA = 10
 
         # Terrain type
         self.WINTER_MODE = winter

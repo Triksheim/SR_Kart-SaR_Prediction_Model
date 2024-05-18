@@ -23,12 +23,12 @@ if __name__ == "__main__":
     plot = False
 
     # Set to collect data from GeoNorge and OSM
-    collect = True
+    collect = False
     plot_collect = False
 
     ## preprocessing functions start ## -----------------------------------------------------------
 
-    run_all_pp = True   # Set to run all preprocessing functions or set individual functions below
+    run_all_pp = False   # Set to run all preprocessing functions or set individual functions below
 
     # Encode terrain type data to 0-1 values based on RGB values
     encode = run_all_pp or False
@@ -109,16 +109,16 @@ if __name__ == "__main__":
     # Branching simulation
     branching_sim = True
     plot_branching = True
-    scatter_endpoints = True                          # scatter endpoints in plot
+    scatter_endpoints = False                          # scatter endpoints in plot
     branching_sim_iterations = 2                    # number of iterations for each direction (iter * 8)
     b_range_factor = 1.25                 # factor for "max" travel distance                
-    hull_alpha = 15                                        # "concavity" of the search area hull                                           # percentage of max distance for 50% ring
+    hull_alpha = 10                                       # "concavity" of the search area hull                                           # percentage of max distance for 50% ring
     terrain_change_threshold = 0.3                           # threshold for branching when large terrain change (0-1)
     random_branching_chance = 2                             # chance of random branching (n/10.000)
-    obstacle_threshold = 0.1                                # threshold for obstacle detection (0-1)
-    d1 = 600
-    d2 = 1500
-    d3 = 2500
+    obstacle_threshold = 0.1                               # threshold for obstacle detection (0-1)
+    d1 = 1600
+    d2 = 2600
+    d3 = 5800
 
     # Create map overlay layer with CRS from branching simulation results
     create_map_overlay = True if branching_sim else False
@@ -139,10 +139,13 @@ if __name__ == "__main__":
     # start_lat = 68.443336
     # start_lng = 17.527965
 
-    start_lat = 68.443336
-    start_lng = 17.527965
-    
+    start_lat = 68.26615067072053
+    start_lng = 14.537723823348557
 
+    #68.36350141129658, 17.46499570357339
+
+    #68.45948818199123, 17.481943502193086 hålogalandsbrua
+    #68.44115616527715, 17.48180984530364 taralsviktoppen
     #68.4383953706666, 17.427225974564415 narvik sentrum
     #67.31458155986105, 14.477247863863925  keiservarden
     #68.44333623319275, 17.52796511156201   pumpvannet
@@ -379,6 +382,7 @@ if __name__ == "__main__":
         last_cutoff = set()
         sets = (green_coords, yellow_coords, red_coords, branches, last_cutoff)
 
+        time_out = 300
 
         print("Branching simulation started...")
         start_time = time.perf_counter()
@@ -388,6 +392,11 @@ if __name__ == "__main__":
                 for j in range(-1, 2, 1):
                     move_direction = (i, j)
                     if move_direction != (0, 0):
+                        
+                        if time.perf_counter() - start_time > time_out:
+                            print(f"Time out: {time_out} seconds")
+                            break
+
                         print(f'Iteration {n+1}/{branching_sim_iterations}, Direction {curr_dir}/{8}')
                         curr_dir += 1
                         branches = set() # reset branches
