@@ -1,7 +1,7 @@
 
 class ModelConfig:
     
-    def __init__(self, base_dir='output', winter=False, d25=None, d50=None, d75=None, search_type=None, sector_size=40_000):
+    def __init__(self, base_dir='output', winter=False, d25=None, d50=None, d75=None, search_type=None, sector_size=30_000):
         self.BASE_DIR = f'{base_dir}/'
         self.ARRAY_FOLDER = f'{self.BASE_DIR}array/'
         self.OVERLAY_FOLDER = f'{self.BASE_DIR}overlays/'
@@ -12,7 +12,6 @@ class ModelConfig:
 
         self.SQUARE_RADIUS = 500  # 1000m x 1000m square
         self.EXTRA_MAP_SIZE = 0.5  # 50% extra map size
-        self.SECTOR_MAX_SIZE = 80_000  # 80.000 m^2
 
         self.SEARCH_TYPE = search_type if search_type else "Hiker"
         self.D25 = d25
@@ -38,7 +37,7 @@ class ModelConfig:
         self.HULL_ALPHA = 15
 
         # Search sectors
-        self.SECTOR_MAX_SIZE = sector_size  # Default 40.000 m^2
+        self.SECTOR_MAX_SIZE = sector_size  # Default 30.000
 
         # Terrain type
         self.WINTER_MODE = winter
