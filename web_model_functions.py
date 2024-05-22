@@ -61,7 +61,7 @@ def collect_model_data(search_id, lat, lng, d25, d50, d75, base_dir):
         print(f'Error: {e}')
         with open(logfile, 'a') as f:
             f.write(f'\n\nError: {e}\n\n')
-            f.write(f'UNRESOLVEABLE ERROR OCCURED WHILE COLLECTING DATA.\nPLEASE END AND RESTART MODEL.\n\n')
+            f.write(f'UNRESOLVEABLE ERROR OCCURED WHILE COLLECTING DATA.\n')
             
 
         raise Exception(f'{e}')
@@ -74,8 +74,14 @@ def start_model(search_id, lat, lng, d25, d50, d75, base_dir, search_type=None):
     logfile = f'{config.LOG_DIR}logfile.txt'
     with open(logfile, 'a') as f:
         f.write(f'{config.config_str()}\n')
-        
-    layers = process_model_data(search_id, lat, lng, d25, d50, d75, config)
+    try:
+        layers = process_model_data(search_id, lat, lng, d25, d50, d75, config)
+
+    except Exception as e:
+        print(f'Error: {e}')
+        with open(logfile, 'a') as f:
+            f.write(f'\n\nError: {e}\n\n')
+            f.write(f'UNRESOLVEABLE ERROR OCCURED.\n')
     return layers
 
 
@@ -102,16 +108,23 @@ def generate_search_sectors(search_id, lat, lng, base_dir, bounds=None, sector_s
 
     crs = 'EPSG:4326'
 
-
-    sector_polygons = create_search_sectors_with_polygons(
-        terrain_score_matrix, coords, hull_polygon, config.SECTOR_MAX_SIZE,
-        config.REDUCTION_FACTOR, crs, config.SECTOR_FOLDER, search_id)
+    try:
+        sector_polygons = create_search_sectors_with_polygons(
+            terrain_score_matrix, coords, hull_polygon, config.SECTOR_MAX_SIZE,
+            config.REDUCTION_FACTOR, crs, config.SECTOR_FOLDER, search_id)
     
-    with open(logfile, 'a') as f:
-        f.write(f' done\n')
+        with open(logfile, 'a') as f:
+            f.write(f' done\n')
 
-    print(f'Sectors created: {len(sector_polygons)}')
-    return sector_polygons
+        print(f'Sectors created: {len(sector_polygons)}')
+        return sector_polygons
+
+    except Exception as e:
+        print(f'Error: {e}')
+        with open(logfile, 'a') as f:
+            f.write(f'\n\nError: {e}\n\n')
+            f.write(f'UNRESOLVEABLE ERROR OCCURED. \n')
+
 
 
 

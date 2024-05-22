@@ -2,16 +2,16 @@ from web_model_functions import *
 import os
 
 
-search_id = 27
+search_id = 30
 lat = 68.45993167852778
 lng = 17.481715679168705
 # lat = 68.26615067072053
 # lng = 14.537723823348557
-d25 = 600
+d25 = 800
 d50 = 1600
-d75 = 5800
+d75 = 3200
 
-search_type = "BerryPicker"
+search_type = "Hiker"
 
 base_dir = os.getcwd()
 base_dir_out = f'{base_dir}/output/'

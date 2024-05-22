@@ -20,7 +20,7 @@ if __name__ == "__main__":
     logs_folder = f'{output_folder}logs/'
 
     # Set to visulize all data in pyplots or set individual plots below
-    plot = False
+    plot = True
 
     # Set to collect data from GeoNorge and OSM
     collect = True
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     # Reduce resolution of terrain and height data
     reduced_resolution = run_all_pp or False
     plot_reduced_resolution = False
-    reduction_factor = 5                  # factor for reducing resolution (in both x and y direction)
+    reduction_factor = 1                  # factor for reducing resolution (in both x and y direction)
     
     # Calculate steepness of the terrain
     calculate_steepness = run_all_pp or False
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     # start_lng = 17.527965
 
     start_lat = 68.26615067072053
-    start_lng = 4.537723823348557
+    start_lng = 14.537723823348557
 
     #59.2669333525745, 10.976414680480959
 
@@ -201,9 +201,9 @@ if __name__ == "__main__":
         start_time = time.perf_counter()
         
         create_height_array(f'{output_folder}id{search_id}_{start_lat}_{start_lng}_height_composite.tif',
-                         arrays_folder)
+                         arrays_folder, reduction_factor=reduction_factor)
         create_terrain_RGB_array(f'{output_folder}id{search_id}_{start_lat}_{start_lng}_terrain_composite.tif',
-                              arrays_folder)
+                              arrays_folder, reduction_factor=reduction_factor)
 
 
         terrain_rgb_file_path = f'{arrays_folder}id{search_id}_terrain_RGB_matrix.npy'
@@ -435,13 +435,13 @@ if __name__ == "__main__":
             plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
             plt.colorbar(label="Terreng: Vaskelig  ->  Lett")
 
-            circle = Circle((radius, radius), (d1/reduction_factor), color="green", fill=False)   # search area circle
+            circle = Circle((radius, radius), (d1/reduction_factor), color="green", linewidth=2, fill=False)   # search area circle
             plt.gca().add_patch(circle)
 
-            circle = Circle((radius, radius), (d2/reduction_factor), color="yellow", fill=False)   # search area circle
+            circle = Circle((radius, radius), (d2/reduction_factor), color="yellow", linewidth=2, fill=False)   # search area circle
             plt.gca().add_patch(circle)
 
-            circle = Circle((radius, radius), (d3/reduction_factor), color="red", fill=False)   # search area circle
+            circle = Circle((radius, radius), (d3/reduction_factor), color="red", linewidth=2, fill=False)   # search area circle
             plt.gca().add_patch(circle)
 
             if concave_hull_r:
@@ -449,7 +449,7 @@ if __name__ == "__main__":
                 plt.fill(x_r, y_r, edgecolor='r',linewidth=3, fill=False)
             if concave_hull_y:
                 x_y, y_y = get_polygon_coords_from_hull(concave_hull_y)
-                plt.fill(x_y, y_y, edgecolor='y',linewidth=3, fill=False)
+                plt.fill(x_y, y_y, edgecolor='yellow',linewidth=3, fill=False)
             if concave_hull_g:
                 x_g, y_g = get_polygon_coords_from_hull(concave_hull_g)
                 plt.fill(x_g, y_g, edgecolor='g',linewidth=3, fill=False)

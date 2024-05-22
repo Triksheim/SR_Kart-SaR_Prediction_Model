@@ -277,7 +277,7 @@ def create_numpy_arrays_from_tiff(search_id, start_lat, start_lng, tiff_folder, 
     create_terrain_RGB_array(f'{tiff_folder}id{search_id}_{start_lat}_{start_lng}_terrain_composite.tif', output_folder)
 
 
-def create_height_array(tiff_path, output_folder="output/array", reducation_factor=5, search_id=0):
+def create_height_array(tiff_path, output_folder="output/array", reduction_factor=5, search_id=0):
     """
     Create a NumPy array from a TIFF file containing height data.
 
@@ -291,7 +291,7 @@ def create_height_array(tiff_path, output_folder="output/array", reducation_fact
 
     height_dataset = exctract_data_from_tiff(tiff_path)
     height_dataset = height_dataset[:-1,:-1]  # Remove last row and column to make it square  
-    height_dataset = reduce_resolution(height_dataset, factor=reducation_factor, method='mean')
+    height_dataset = reduce_resolution(height_dataset, factor=reduction_factor, method='mean')
 
     np.save(f'{output_folder}id{search_id}_height_matrix.npy', height_dataset)
     print(f'Height data np array saved to {output_folder}height_matrix.npy')
@@ -385,10 +385,10 @@ def compute_concave_hull_from_points(points, alpha):
     
     #print(f'First:{concave_hull.geom_type=}')
 
-    # Ensure the result is a single polygon
-    if concave_hull.geom_type == 'GeometryCollection' or isinstance(concave_hull, MultiPolygon):
-        concave_hull = connect_polygons_with_thin_polygons(concave_hull)
-        concave_hull = iterative_merge_close_polygons(concave_hull)
+    # # Ensure the result is a single polygon
+    # if concave_hull.geom_type == 'GeometryCollection' or isinstance(concave_hull, MultiPolygon):
+    #     concave_hull = connect_polygons_with_thin_polygons(concave_hull)
+    #     concave_hull = iterative_merge_close_polygons(concave_hull)
 
     #print(f'End: {concave_hull.geom_type=}')
 
