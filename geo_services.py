@@ -63,7 +63,8 @@ def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, fo
         for x in range(-map_extention, map_extention+1, 1):
             map_squares_center_point.append((center_x + (2*x*square_radius), center_y + (2*y*square_radius)))
 
-    
+    if not log_file:
+        log_file = f'{folder}logs/logfile.txt'
 
 
     with open(f'{folder}logs/logfile.txt', 'a') as f:

@@ -1,7 +1,7 @@
 
 class ModelConfig:
     
-    def __init__(self, base_dir='output', winter=False, d25=None, d50=None, d75=None, search_type=None):
+    def __init__(self, base_dir='output', winter=False, d25=None, d50=None, d75=None, search_type=None, sector_size=40_000):
         self.BASE_DIR = f'{base_dir}/'
         self.ARRAY_FOLDER = f'{self.BASE_DIR}array/'
         self.OVERLAY_FOLDER = f'{self.BASE_DIR}overlays/'
@@ -36,6 +36,9 @@ class ModelConfig:
         self.OBSTACLE_THRESHOLD = self.get_params_for_category(self.SEARCH_TYPE)
         self.RANDOM_FACTOR = 2   
         self.HULL_ALPHA = 15
+
+        # Search sectors
+        self.SECTOR_MAX_SIZE = sector_size  # Default 40.000 m^2
 
         # Terrain type
         self.WINTER_MODE = winter

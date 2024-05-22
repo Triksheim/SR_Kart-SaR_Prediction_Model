@@ -23,12 +23,12 @@ if __name__ == "__main__":
     plot = False
 
     # Set to collect data from GeoNorge and OSM
-    collect = False
+    collect = True
     plot_collect = False
 
     ## preprocessing functions start ## -----------------------------------------------------------
 
-    run_all_pp = False   # Set to run all preprocessing functions or set individual functions below
+    run_all_pp = True   # Set to run all preprocessing functions or set individual functions below
 
     # Encode terrain type data to 0-1 values based on RGB values
     encode = run_all_pp or False
@@ -110,14 +110,14 @@ if __name__ == "__main__":
     branching_sim = True
     plot_branching = True
     scatter_endpoints = False                          # scatter endpoints in plot
-    branching_sim_iterations = 4                    # number of iterations for each direction (iter * 8)
+    branching_sim_iterations = 8                    # number of iterations for each direction (iter * 8)
     b_range_factor = 1.25                 # factor for "max" travel distance                
     hull_alpha = 15                                       # "concavity" of the search area hull                                           # percentage of max distance for 50% ring
     terrain_change_threshold = 0.3                           # threshold for branching when large terrain change (0-1)
     random_branching_chance = 2                             # chance of random branching (n/10.000)
     obstacle_threshold = 0.2                               # threshold for obstacle detection (0-1)
     d1 = 600
-    d2 = 1600
+    d2 = 1800
     d3 = 3200
 
     # Create map overlay layer with CRS from branching simulation results
@@ -139,8 +139,10 @@ if __name__ == "__main__":
     # start_lat = 68.443336
     # start_lng = 17.527965
 
-    start_lat = 68.44115616527715
-    start_lng = 17.48180984530364
+    start_lat = 68.26615067072053
+    start_lng = 4.537723823348557
+
+    #59.2669333525745, 10.976414680480959
 
     #68.36350141129658, 17.46499570357339
 

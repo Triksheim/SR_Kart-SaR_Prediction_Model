@@ -79,9 +79,9 @@ def start_model(search_id, lat, lng, d25, d50, d75, base_dir, search_type=None):
     return layers
 
 
-def generate_search_sectors(search_id, lat, lng, base_dir, bounds=None):
+def generate_search_sectors(search_id, lat, lng, base_dir, bounds=None, sector_size=30_000):
     print(f'Generating search sectors...')
-    config = ModelConfig(base_dir)
+    config = ModelConfig(base_dir, sector_size=sector_size)
     logfile = f'{config.LOG_DIR}logfile.txt'
 
     with open(logfile, 'a') as f:
