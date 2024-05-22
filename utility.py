@@ -385,17 +385,17 @@ def compute_concave_hull_from_points(points, alpha):
     
     #print(f'First:{concave_hull.geom_type=}')
 
-    # # Ensure the result is a single polygon
-    # if concave_hull.geom_type == 'GeometryCollection' or isinstance(concave_hull, MultiPolygon):
-    #     concave_hull = connect_polygons_with_thin_polygons(concave_hull)
-    #     concave_hull = iterative_merge_close_polygons(concave_hull)
+    # Ensure the result is a single polygon
+    if concave_hull.geom_type == 'GeometryCollection' or isinstance(concave_hull, MultiPolygon):
+        concave_hull = connect_polygons_with_thin_polygons(concave_hull)
+        #concave_hull = iterative_merge_close_polygons(concave_hull)
 
     #print(f'End: {concave_hull.geom_type=}')
 
     return concave_hull
 
 
-def connect_polygons_with_thin_polygons(multipolygon, width=1):
+def connect_polygons_with_thin_polygons(multipolygon, width=1, extension=1):
     if not isinstance(multipolygon, MultiPolygon):
         return multipolygon
     
@@ -420,11 +420,13 @@ def connect_polygons_with_thin_polygons(multipolygon, width=1):
         
         offset_x = width * dy / length / 2
         offset_y = width * dx / length / 2
+        ex_x = extension * dx / length
+        ex_y = extension * dy / length
         thin_polygon = Polygon([
-            (p1.x - offset_x, p1.y + offset_y),
-            (p1.x + offset_x, p1.y - offset_y),
-            (p2.x + offset_x, p2.y - offset_y),
-            (p2.x - offset_x, p2.y + offset_y),
+            (p1.x - offset_x - ex_x, p1.y + offset_y - ex_y),
+            (p1.x + offset_x - ex_x, p1.y - offset_y - ex_y),
+            (p2.x + offset_x + ex_x, p2.y - offset_y + ex_y),
+            (p2.x - offset_x + ex_x, p2.y + offset_y + ex_y),
         ])
         
         # Combine the current combined polygon with the new polygon and the connecting thin polygon
