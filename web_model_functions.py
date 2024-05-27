@@ -43,18 +43,17 @@ import time
 import numpy as np
 import geopandas as gpd
 
+# Functions for running the SAR model from the webserver
 
 
 # Run from webserver
 def collect_model_data(search_id, lat, lng, d25, d50, d75, base_dir):
-
     # Set base dir
     config = ModelConfig(base_dir)
 
     logfile = f'{config.LOG_DIR}logfile.txt'
     with open(logfile, 'w') as f:
         f.write(f'SAR logfile: {search_id=}, {lat=}, {lng=}\n\n')
-
     try:
         get_model_data(search_id, lat, lng, d25, d50, d75, config)
     except Exception as e:
@@ -63,7 +62,6 @@ def collect_model_data(search_id, lat, lng, d25, d50, d75, base_dir):
             f.write(f'\n\nError: {e}\n\n')
             f.write(f'UNRESOLVEABLE ERROR OCCURED WHILE COLLECTING DATA.\n')
             
-
         raise Exception(f'{e}')
             
 
@@ -153,12 +151,9 @@ def process_model_data(search_id, lat, lng, d25, d50, d75, config: ModelConfig):
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
         f.write(f'Processing model data...\n')
 
-
     # Rasterize and encode terrain data
     start_time = time.perf_counter()
     # Create arrays from tiff files
-
-
 
 
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
@@ -189,8 +184,6 @@ def process_model_data(search_id, lat, lng, d25, d50, d75, config: ModelConfig):
 
 
     
-
-
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
         f.write(f'Adding railways...')
     # Add railways
@@ -227,9 +220,6 @@ def process_model_data(search_id, lat, lng, d25, d50, d75, config: ModelConfig):
                                 config.TRAIL, search_id)
     with open(f'{config.LOG_DIR}logfile.txt', 'a') as f:
         f.write(f' done\n')
-
-
-    
 
 
     

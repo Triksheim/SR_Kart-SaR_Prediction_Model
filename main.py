@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import time
 
 
-          
+  # ONLY FOR LOCAL TESTING AND DEVELOPMENT       
 
 
 if __name__ == "__main__":
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     # Reduce resolution of terrain and height data
     reduced_resolution = run_all_pp or False
     plot_reduced_resolution = False
-    reduction_factor = 1                  # factor for reducing resolution (in both x and y direction)
+    reduction_factor = 5                  # factor for reducing resolution (in both x and y direction)
     
     # Calculate steepness of the terrain
     calculate_steepness = run_all_pp or False
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     # Branching simulation
     branching_sim = True
     plot_branching = True
-    scatter_endpoints = False                          # scatter endpoints in plot
+    scatter_endpoints = True                          # scatter endpoints in plot
     branching_sim_iterations = 8                    # number of iterations for each direction (iter * 8)
     b_range_factor = 1.25                 # factor for "max" travel distance                
     hull_alpha = 15                                       # "concavity" of the search area hull                                           # percentage of max distance for 50% ring
@@ -159,6 +159,32 @@ if __name__ == "__main__":
     search_id = 0
     
 
+    # # testplotting
+    # try:
+    #     trail_data = np.load(f'{arrays_folder}id{search_id}_gn_trail_data.npy')
+    #     #print(trail_data.shape)
+    #     plot_array(trail_data, cmap='BuGn', title="Stier GeoNorge", colorbar=False)
+    # except FileNotFoundError:
+    #     print("No GeoNorge trail data found")
+
+    # try:
+    #     trail_data = np.load(f'{arrays_folder}id{search_id}_osm_trail_data.npy')
+    #     #print(trail_data.shape)
+    #     plot_array(trail_data, cmap='BuGn', title="Stier OSM", colorbar=False)
+    # except FileNotFoundError:
+    #     print("No OSM trail data found")
+
+    # try:
+    #     trail_data = np.load(f'{arrays_folder}id{search_id}_osm_building_data.npy')
+    #     #print(trail_data.shape)
+    #     plot_array(trail_data, cmap='BuGn', title="Byggninger", colorbar=False)
+    # except FileNotFoundError:
+    #     print("No OSM building data found")
+
+
+
+
+
    
 
     if collect:
@@ -192,6 +218,14 @@ if __name__ == "__main__":
                 plot_array(trail_data, cmap='terrain', title="Stier OSM")
             except FileNotFoundError:
                 print("No OSM trail data found")
+
+            try:
+                trail_data = np.load(f'{arrays_folder}id{search_id}_osm_building_data.npy')
+                #print(trail_data.shape)
+                plot_array(trail_data, cmap='terrain', title="Byggninger OSM")
+            except FileNotFoundError:
+                print("No OSM trail data found")
+
 
 
 
@@ -267,7 +301,7 @@ if __name__ == "__main__":
 
         norm_steepness_matrix = steepness_matrix / normalization_cap                      # normalize values to 0-1
         inv_norm_steepness_matrix = 1 - norm_steepness_matrix                             # invert values
-        inv_norm_steepness_matrix = inv_norm_steepness_matrix ** square_factor                       # square values for better separation at extremes
+        #inv_norm_steepness_matrix = inv_norm_steepness_matrix ** square_factor                       # square values for better separation at extremes
         
         #inv_norm_steepness_matrix[inv_norm_steepness_matrix < 0.1] = 0                    # set values below 0.1 to 0
 
@@ -362,8 +396,8 @@ if __name__ == "__main__":
 
     if branching_sim:
         
-        # # Calibration testing
-        # terrain_score_matrix = np.full((600,600), 0.8)
+        # Calibration testing
+        #terrain_score_matrix = np.full((1400,1400), 0.8)
 
         terrain_score_matrix = np.load(f'{arrays_folder}id{search_id}_terrain_score_matrix.npy')
         
@@ -418,6 +452,11 @@ if __name__ == "__main__":
         yellow_points = np.array(list(yellow_coords)[::3])
         green_points = np.array(list(green_coords)[::2])
 
+
+        # red_points = np.array(list(red_coords))
+        # yellow_points = np.array(list(yellow_coords))
+        # green_points = np.array(list(green_coords))
+
         last_cutoff_points = np.array(list(last_cutoff)[::10])
 
 
@@ -444,21 +483,34 @@ if __name__ == "__main__":
             circle = Circle((radius, radius), (d3/reduction_factor), color="red", linewidth=2, fill=False)   # search area circle
             plt.gca().add_patch(circle)
 
-            if concave_hull_r:
-                x_r, y_r = get_polygon_coords_from_hull(concave_hull_r)
-                plt.fill(x_r, y_r, edgecolor='r',linewidth=3, fill=False)
-            if concave_hull_y:
-                x_y, y_y = get_polygon_coords_from_hull(concave_hull_y)
-                plt.fill(x_y, y_y, edgecolor='yellow',linewidth=3, fill=False)
-            if concave_hull_g:
-                x_g, y_g = get_polygon_coords_from_hull(concave_hull_g)
-                plt.fill(x_g, y_g, edgecolor='g',linewidth=3, fill=False)
+
+            # circle = Circle((radius, radius), (d1/reduction_factor), color="black", linewidth=2, fill=False)   # search area circle
+            # plt.gca().add_patch(circle)
+
+            # circle = Circle((radius, radius), (d2/reduction_factor), color="black", linewidth=2, fill=False)   # search area circle
+            # plt.gca().add_patch(circle)
+
+            # circle = Circle((radius, radius), (d3/reduction_factor), color="black", linewidth=2, fill=False)   # search area circle
+            # plt.gca().add_patch(circle)
+
+
+
+
+            # if concave_hull_r:
+            #     x_r, y_r = get_polygon_coords_from_hull(concave_hull_r)
+            #     plt.fill(x_r, y_r, edgecolor='r',linewidth=3, fill=False)
+            # if concave_hull_y:
+            #     x_y, y_y = get_polygon_coords_from_hull(concave_hull_y)
+            #     plt.fill(x_y, y_y, edgecolor='yellow',linewidth=3, fill=False)
+            # if concave_hull_g:
+            #     x_g, y_g = get_polygon_coords_from_hull(concave_hull_g)
+            #     plt.fill(x_g, y_g, edgecolor='g',linewidth=3, fill=False)
 
             # plot endpoints
             if scatter_endpoints:
                 plt.scatter(red_points[:,0], red_points[:,1], color='red', s=5)
 
-                plt.scatter(last_cutoff_points[:,0], last_cutoff_points[:,1], color='pink', s=5)
+                #plt.scatter(last_cutoff_points[:,0], last_cutoff_points[:,1], color='pink', s=5)
 
                 plt.scatter(yellow_points[:,0], yellow_points[:,1], color='yellow', s=5)
                 plt.scatter(green_points[:,0], green_points[:,1], color='green', s=5)
@@ -479,9 +531,11 @@ if __name__ == "__main__":
         distance_per_index =  map_diameter / terrain_score_matrix.shape[0]  # Meters per index in the matrix
 
         # create map overlays for red, yellow and green areas
-        create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", output_crs="EPSG:25833")
-        create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", output_crs="EPSG:25833")
-        create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", output_crs="EPSG:25833")
+        poly_75 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", output_crs="EPSG:25833")
+        poly_50 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", output_crs="EPSG:25833")
+        poly_25 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", output_crs="EPSG:25833")
+
+        print(f'{poly_75.area=}, {poly_50.area=}, {poly_25.area=}')
 
         # create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:4326")
         # create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", crs="EPSG:4326")

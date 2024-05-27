@@ -1,15 +1,18 @@
 from web_model_functions import *
 import os
 
+# For testing the web model functions, run this script
 
-search_id = 38
-lat = 68.45948818199123
-lng = 17.481943502193086
-# lat = 68.26615067072053
-# lng = 14.537723823348557
-d25 = 600
-d50 = 1800
-d75 = 3200
+search_id = 2
+
+# Start coordinates (IPP)
+lat = 68.44333              
+lng = 17.52796
+
+# Search radius (25%, 50%, 75%) (meter)
+d25 = 200
+d50 = 600
+d75 = 1500
 
 search_type = "Hiker"
 
@@ -21,10 +24,6 @@ os.makedirs(f'{base_dir_id}array/', exist_ok=False)
 os.makedirs(f'{base_dir_id}overlays/', exist_ok=False)
 os.makedirs(f'{base_dir_id}logs/', exist_ok=False)
 os.makedirs(f'{base_dir_id}overlays/sectors', exist_ok=False)
-
-
-
-
 
 
 collect_model_data(search_id, lat, lng, d25, d50, d75, base_dir_id)

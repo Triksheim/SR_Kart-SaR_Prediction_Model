@@ -2,6 +2,8 @@ from SAR_model_functions import create_search_sectors, create_search_sectors_wit
 import numpy as np
 import geopandas as gpd
 
+# ONLY FOR TESTING SECTOR GENERATION
+
 coords = 68.443336, 17.527965
 #terrain_score_matrix = np.ones((1000, 1000))
 terrain_score_matrix = np.load(f'output/array/id0_terrain_score_matrix.npy')

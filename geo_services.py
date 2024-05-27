@@ -160,9 +160,6 @@ def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=5
                 "format": response_format,
                 "boundingbox": bbox,
             }
-
-            
-
             # Submit task to the executor
             future = executor.submit(wcs_request, url, params, min_size_limit=min_size_expected, n=n)
             futures.append(future)
@@ -190,9 +187,6 @@ def get_height_map_geonorge(center_of_map_squares, start_coords, square_radius=5
                             text = f'{n+1}/{len(center_of_map_squares)}'
                             f.seek(max(0, file_size - len(text)), 0)  # Move pointer back
                             f.write(text.encode())  # Write the updated percentage
-
-
-                
 
     # combine a composite tiff from all tiff data and save to file
     filename = f'id{search_id}_{start_coords[0]}_{start_coords[1]}_height_composite.tif' 
@@ -358,12 +352,10 @@ def get_trail_map_osm(utm33_bbox, folder="output/", reduction_factor=5, search_i
     None
     """
     
-
     # Convert the bounding box to WGS84 for overpass API
     min_wsg = transform_coords_crs(utm33_bbox[0], utm33_bbox[1], 25833, 4326)
     max_wsg = transform_coords_crs(utm33_bbox[2], utm33_bbox[3], 25833, 4326)
     wsg84_bbox = (min_wsg[0], min_wsg[1], max_wsg[0], max_wsg[1])
-
 
     # Overpass API query
     overpass_url = "http://overpass-api.de/api/interpreter"
@@ -378,7 +370,7 @@ def get_trail_map_osm(utm33_bbox, folder="output/", reduction_factor=5, search_i
     (._;>;);
     out body;
     """
-    
+
     response = requests.get(overpass_url, params={'data': overpass_query})
     if response.status_code != 200:
         print(f"Failed to fetch data: {response.status_code}")
@@ -560,8 +552,6 @@ def get_railways_osm(utm33_bbox, folder="output/", reduction_factor=5, search_id
 
     """
 
-
-
     road_query = f"""
         [out:json];
         (
@@ -572,7 +562,6 @@ def get_railways_osm(utm33_bbox, folder="output/", reduction_factor=5, search_id
         (._;>;);
         out body;
     """
-
 
     railway_response = overpass_request(railway_query)
     road_response = overpass_request(road_query)
@@ -784,9 +773,6 @@ def get_terrain_type_map(center_for_map_squares, start_coords=("00.00","00.00"),
             filename = f'id{search_id}_{start_coords[0]}_{start_coords[1]}_terrain_composite_image.png'
             filepath = f'{folder}{filename}' 
             create_composite_image(images, filepath)
-
-
-
 
 
 

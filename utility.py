@@ -55,6 +55,7 @@ def transform_coords_crs(x, y, source_crs, target_crs):
     
     return new_coords
 
+
 def calculate_bbox_utm(utm_x, utm_y, radius=1000):
     """
     Calculate a bounding box from a UTM coordinate with a specified radius.
@@ -75,6 +76,7 @@ def calculate_bbox_utm(utm_x, utm_y, radius=1000):
     max_y = utm_y + radius
     
     return (min_x, min_y, max_x, max_y)
+
 
 def create_bbox_string(min_x, min_y, max_x, max_y, crs='EPSG::25833'):
     """
@@ -126,12 +128,9 @@ def latlng_to_utm_bbox(lat, lng, radius):
     return (min_x, min_y, max_x, max_y)
 
 
-
-
-
 def extract_tiff_from_multipart_response(response, output_path="", save_to_file=False):
     """
-    Extract a GeoTIFF from a multipart response and save it to a file.
+    Extract a GeoTIFF from a multipart response (GeoNorge spesific) and save it to a file.
     
     Parameters:
     - response (requests.Response): The response object from the GetCoverage request.
@@ -182,7 +181,6 @@ def exctract_data_from_tiff(tiff_path, band_n=1, tiff_data=None):
             with memfile.open() as src:
                 data = src.read(band_n)  # band number
     return data
-
 
 
 def create_composite_tiff(tiff_data, output_path):
@@ -322,9 +320,10 @@ def create_terrain_RGB_array(filepath, output_folder="output/array/", reduction_
 
 
 
-def plot_array(array, cmap="terrain", label="", title="Array Plot", save=False, folder="output/"):
+def plot_array(array, cmap="terrain", label="", title="Array Plot",colorbar=True, save=False, folder="output/"):
     plt.imshow(array, cmap=cmap)
-    plt.colorbar(label=label)
+    if colorbar:
+        plt.colorbar(label=label)
     plt.title(title)
     plt.axis('off')
     if save:
@@ -341,6 +340,8 @@ def compute_concave_hull_from_points(points, alpha):
     @param alpha: Alpha value to influence the gooeyness of the border. Smaller numbers
                   don't fall inward as much as larger numbers. Too large, and you lose everything!
     """
+    # Function based on: https://gist.github.com/jclosure/d93f39a6c7b1f24f8b92252800182889 
+
     if len(points) < 4:
         # A polygon cannot be made with fewer than 3 points
         return None
@@ -396,6 +397,18 @@ def compute_concave_hull_from_points(points, alpha):
 
 
 def connect_polygons_with_thin_polygons(multipolygon, width=1, extension=1):
+    """
+    Connects the polygons in a MultiPolygon with thin connecting polygons.
+
+    Args:
+        multipolygon (MultiPolygon): The MultiPolygon containing the polygons to connect.
+        width (float, optional): The width of the connecting polygons. Defaults to 1.
+        extension (float, optional): The extension of the connecting polygons. Defaults to 1.
+
+    Returns:
+        Polygon or MultiPolygon: The combined polygon or multipolygon after connecting the polygons.
+    """
+
     if not isinstance(multipolygon, MultiPolygon):
         return multipolygon
     
@@ -442,8 +455,8 @@ def connect_polygons_with_thin_polygons(multipolygon, width=1, extension=1):
 
 
 
-
 def iterative_merge_close_polygons(multipolygon, max_buffer_distance=1.0, step=0.1):
+    # Testing. Not used.
     if isinstance(multipolygon, MultiPolygon):
         buffer_distance = step
         merged_polygon = multipolygon
@@ -464,13 +477,9 @@ def iterative_merge_close_polygons(multipolygon, max_buffer_distance=1.0, step=0
 
 
 
-
-
 def get_polygon_coords_from_hull(hull):
     # handling both Polygon and MultiPolygon cases
-
     #print(f'{hull.geom_type=}')
-
     if isinstance(hull, MultiPolygon):
         largest_polygon = None
         max_area = 0
@@ -494,49 +503,67 @@ def get_polygon_coords_from_hull(hull):
 
 
 def create_polygon_map_overlay(matrix, coords, hull, color="red", output_crs="EPSG:25833", folder='output/overlays/overlay', reduction_factor=5, search_id=0):
-            matrix_width, matrix_height = matrix.shape[0], matrix.shape[1]
-            map_diameter = matrix_width * reduction_factor  # Meters
-            distance_per_index = map_diameter / matrix_width  # Meters per index in the matrix
-            lat, lng = coords
-            center_x, center_y = transform_coordinates_to_utm(lat, lng)
+    """
+    Create a polygon map overlay from a matrix, coordinates, and a convex hull.
 
-            x, y = get_polygon_coords_from_hull(hull)
-            hull_indices = list(zip(x, y))
+    Args:
+        matrix (numpy.ndarray): The matrix representing the map.
+        coords (tuple): The latitude and longitude coordinates of the map center.
+        hull (scipy.spatial.ConvexHull): The convex hull of the map.
+        color (str, optional): The color of the overlay. Defaults to "red".
+        output_crs (str, optional): The coordinate reference system of the output. Defaults to "EPSG:25833".
+        folder (str, optional): The folder to save the overlay file. Defaults to 'output/overlays/overlay'.
+        reduction_factor (int, optional): The reduction factor for the map diameter. Defaults to 5.
+        search_id (int, optional): The search ID. Defaults to 0.
 
-            # Convert matrix indices to geographic coordinates with y-axis correction
-            concave_hull_geo = []
-            for x_idx, y_idx in hull_indices:
-                # Calculate the meter position relative to the center
-                x_meter = (x_idx - matrix_width / 2) * distance_per_index
-                # Invert y-axis by subtracting y_idx from matrix_height before calculation
-                y_meter = ((matrix_height - y_idx) - matrix_height / 2) * distance_per_index
+    Returns:
+        shapely.geometry.Polygon: The transformed polygon.
 
-                # Convert meter offsets to geographic coordinates
-                x_geo, y_geo = center_x + x_meter, center_y + y_meter
-                concave_hull_geo.append((x_geo, y_geo))
+    """
+    
+    matrix_width, matrix_height = matrix.shape[0], matrix.shape[1]
+    map_diameter = matrix_width * reduction_factor  # Meters
+    distance_per_index = map_diameter / matrix_width  # Meters per index in the matrix
+    lat, lng = coords
+    center_x, center_y = transform_coordinates_to_utm(lat, lng)
 
-            # Create a polygon from the hull coordinates
-            hull_polygon = Polygon(concave_hull_geo)
-            # map polygon to coordinate reference system
-            base_crs = 'EPSG:25833'
-            #print(f'{hull_polygon=}')
-            gdf = gpd.GeoDataFrame(index=[0], crs=base_crs, geometry=[hull_polygon])
-            gdf.to_crs(output_crs, inplace=True)
-            # save as GeoJSON
-            gdf.to_file(f'{folder}id{search_id}_{color}_{lat}_{lng}_EPSG{output_crs[5:]}.geojson', driver='GeoJSON')
-            print(f'Overlay saved to {folder}id{search_id}_{color}_{lat}_{lng}_EPSG{output_crs[5:]}.geojson')
+    x, y = get_polygon_coords_from_hull(hull)
+    hull_indices = list(zip(x, y))
+
+    # Convert matrix indices to geographic coordinates with y-axis correction
+    concave_hull_geo = []
+    for x_idx, y_idx in hull_indices:
+        # Calculate the meter position relative to the center
+        x_meter = (x_idx - matrix_width / 2) * distance_per_index
+        # Invert y-axis by subtracting y_idx from matrix_height before calculation
+        y_meter = ((matrix_height - y_idx) - matrix_height / 2) * distance_per_index
+
+        # Convert meter offsets to geographic coordinates
+        x_geo, y_geo = center_x + x_meter, center_y + y_meter
+        concave_hull_geo.append((x_geo, y_geo))
+
+    # Create a polygon from the hull coordinates
+    hull_polygon = Polygon(concave_hull_geo)
+    # map polygon to coordinate reference system
+    base_crs = 'EPSG:25833'
+    #print(f'{hull_polygon=}')
+    gdf = gpd.GeoDataFrame(index=[0], crs=base_crs, geometry=[hull_polygon])
+    gdf.to_crs(output_crs, inplace=True)
+    # save as GeoJSON
+    gdf.to_file(f'{folder}id{search_id}_{color}_{lat}_{lng}_EPSG{output_crs[5:]}.geojson', driver='GeoJSON')
+    print(f'Overlay saved to {folder}id{search_id}_{color}_{lat}_{lng}_EPSG{output_crs[5:]}.geojson')
+    
+    transformed_polygon = gdf.geometry.iloc[0]
+    return transformed_polygon
+
             
-            transformed_polygon = gdf.geometry.iloc[0]
-            return transformed_polygon
-
-            
-
 def normalize_component(c):
     if c > 0:
         return 1
     elif c < 0:
         return -1
     return 0
+
 
 def matrix_value_padding(matrix, value, padding=1, custom_offset=None):
     if custom_offset is None:
@@ -557,6 +584,7 @@ def matrix_value_padding(matrix, value, padding=1, custom_offset=None):
                     pass
     return matrix
 
+
 def rasterize_gdf(gdf, height, width, transform):
     raster = rasterize(
             [(geom, 1) for geom in gdf.geometry],
@@ -566,6 +594,7 @@ def rasterize_gdf(gdf, height, width, transform):
             all_touched=True
         )
     return raster
+
 
 def normalize_array(array, cap):
     return array / cap
@@ -599,7 +628,6 @@ def downsample_2d_array(array, factor):
     # Downsampling the array by taking every 'factor'-th element along each dimension
     downsampled_array = array[::factor, ::factor]
     return downsampled_array
-
 
 
 def reduce_resolution(matrix, factor=5, method="mean"):
@@ -655,43 +683,3 @@ def create_square_polygon(center_x, center_y, side_length):
         (center_x - half_side, center_y + half_side)
     ]
     return Polygon(corners)
-
-
-# def create_search_sectors_with_polygons(matrix, coords, hull_polygon, sector_size=50_000, reduction_factor=5, output_crs="EPSG:25833", folder='output/overlays/overlay', search_id=0):
-#     height, width = matrix.shape
-#     map_diameter = height * reduction_factor  # Meters
-#     distance_per_index = map_diameter / height  # Meters per index in the matrix
-#     lat, lng = coords
-#     center_x, center_y = transform_coordinates_to_utm(lat, lng)
-
-#     sector_side_length_m = np.sqrt(sector_size)
-#     sector_side_length_idx = int(sector_side_length_m / reduction_factor)
-
-#     sector_polygons = []
-
-#     for i in range(0, height, sector_side_length_idx):
-#         for j in range(0, width, sector_side_length_idx):
-#             sector_center_x_idx = j + sector_side_length_idx / 2
-#             sector_center_y_idx = i + sector_side_length_idx / 2
-
-#             x_meter = (sector_center_x_idx - width / 2) * distance_per_index
-#             y_meter = ((height - sector_center_y_idx) - height / 2) * distance_per_index
-
-#             sector_center_x_geo, sector_center_y_geo = center_x + x_meter, center_y + y_meter
-
-#             square_polygon = create_square_polygon(sector_center_x_geo, sector_center_y_geo, sector_side_length_m)
-
-#             # Check for intersection with the freeform search area polygon
-#             if hull_polygon.intersects(square_polygon):
-#                 sector_polygons.append(square_polygon)
-
-#     base_crs = 'EPSG:25833'
-#     gdf = gpd.GeoDataFrame(index=range(len(sector_polygons)), crs=base_crs, geometry=sector_polygons)
-#     gdf.to_crs(output_crs, inplace=True)
-
-#     for idx, polygon in enumerate(gdf.geometry):
-#         gdf_single = gpd.GeoDataFrame(index=[0], crs=output_crs, geometry=[polygon])
-#         gdf_single.to_file(f'{folder}id{search_id}_sector_{idx}_EPSG{output_crs[5:]}.geojson', driver='GeoJSON')
-#         print(f'Sector {idx} saved to {folder}id{search_id}_sector_{idx}_EPSG{output_crs[5:]}.geojson')
-
-#     return gdf
