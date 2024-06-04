@@ -1,4 +1,4 @@
-from SAR_model_functions import create_search_sectors, create_search_sectors_with_polygons
+from SAR_model_functions import  create_search_sectors_with_polygons
 import numpy as np
 import geopandas as gpd
 

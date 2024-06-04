@@ -10,6 +10,7 @@ try:
         rasterize_gdf,
         create_composite_image,
         transform_coords_crs,
+        write_to_log_file
     )
 except ImportError:
     from .utility import (
@@ -23,6 +24,7 @@ except ImportError:
         rasterize_gdf,
         create_composite_image,
         transform_coords_crs,
+        write_to_log_file
     )
 
 import requests
@@ -41,7 +43,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, folder="output/", reduction_factor=5, log_file=None):
     """
-    Retrieves and saves various mgeo data based on the given latitude and longitude coordinates.
+    Retrieves and saves various geo data based on the given latitude and longitude coordinates.
 
     Args:
         lat (float): The latitude coordinate.
@@ -58,6 +60,7 @@ def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, fo
     min_x, min_y, max_x, max_y = calculate_bbox_utm(center_x, center_y, full_map_radius)
     utm33_bbox = (min_x, min_y, max_x, max_y)
 
+    # Create a list of center points for each map square
     map_squares_center_point = []
     for y in range(-map_extention, map_extention+1, 1):
         for x in range(-map_extention, map_extention+1, 1):
@@ -67,46 +70,36 @@ def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, fo
         log_file = f'{folder}logs/logfile.txt'
 
 
-    with open(f'{folder}logs/logfile.txt', 'a') as f:
-        f.write(f'Requesting terrain type data...')   
     # get the terrain type map (saves tiff file)
+    write_to_log_file(log_file, f'Requesting terrain type data...')
     get_terrain_type_map(map_squares_center_point, start_point, square_radius, folder, search_id, log_file)
-    with open(f'{folder}logs/logfile.txt', 'a') as f:
-        f.write(f' done\n')
+    write_to_log_file(log_file, f' done\n')
+  
 
-
-
-    with open(f'{folder}logs/logfile.txt', 'a') as f:
-        f.write(f'Requesting terrain height data...')
     # get the height map    (saves tiff file)
+    write_to_log_file(log_file, f'Requesting terrain height data...')
     get_height_map_geonorge(map_squares_center_point, start_point, square_radius, folder, search_id, log_file)
-    with open(f'{folder}logs/logfile.txt', 'a') as f:
-        f.write(f' done\n')
+    write_to_log_file(log_file, f' done\n')
+   
 
-
-    with open(f'{folder}logs/logfile.txt', 'a') as f:
-        f.write(f'Requesting trail data...')
     # get paths and trails map (saves numpy file)
+    write_to_log_file(log_file, f'Requesting trail data...')
     get_trail_map_geonorge(utm33_bbox, folder, reduction_factor, search_id)
     get_trail_map_osm(utm33_bbox, folder, reduction_factor, search_id)
-    with open(f'{folder}logs/logfile.txt', 'a') as f:
-        f.write(f' done\n')
+    write_to_log_file(log_file, f' done\n')
+   
 
-
-    with open(f'{folder}logs/logfile.txt', 'a') as f:
-        f.write(f'Requesting building data...')
     # get buildings map (saves numpy file)
+    write_to_log_file(log_file, f'Requesting building data...')
     get_buildings_osm(utm33_bbox, folder, reduction_factor, search_id)
-    with open(f'{folder}logs/logfile.txt', 'a') as f:
-        f.write(f' done\n')
+    write_to_log_file(log_file, f' done\n')
+   
 
-
-    with open(f'{folder}logs/logfile.txt', 'a') as f:
-        f.write(f'Requesting railway data...')
     # get railways map (saves numpy file)
+    write_to_log_file(log_file, f'Requesting railway data...')
     get_railways_osm(utm33_bbox, folder, reduction_factor, search_id)
-    with open(f'{folder}logs/logfile.txt', 'a') as f:
-        f.write(f' done\n')
+    write_to_log_file(log_file, f' done\n')
+    
     
     
 
@@ -236,13 +229,6 @@ def wcs_request(url, params, retry_limit=15, min_size_limit=100000, n=0):
 
                 else:
                     print(f'Request {n+1} successful. Count: {len(response.content)} bytes')
-
-                    # # debug
-                    # filename = f'{n+1}.txt'
-                    # filepath = f'output/height_test/{filename}'
-                    # with open(filepath, 'wb') as f:
-                    #     f.write(response.content)
-
                     return response
                 
             else:
@@ -305,16 +291,9 @@ def get_trail_map_geonorge(bbox, folder="output/", reduction_factor=5,  search_i
     else:
         combined_df = pd.concat([*gdf_list], ignore_index=True)
         gdf = gpd.GeoDataFrame(combined_df, geometry="geometry")
-        #print(gdf.crs)
         gdf = gdf.to_crs(epsg=25833)
 
-        
-        # gdf.plot()
-        # plt.savefig(f'{folder}trails.png')
-        # print(f'Trail plot saved to {folder}trails.png')
-
         minx, miny, maxx, maxy = bbox
-        # print(bbox)
         width = int(maxx - minx)
         height = int(maxy - miny)
         transform = from_origin(minx, maxy, 1, 1)  # 1x1 meter resolution
@@ -404,10 +383,6 @@ def get_trail_map_osm(utm33_bbox, folder="output/", reduction_factor=5, search_i
     # Convert to UTM (matching projection for rasterization)
     gdf = gdf.to_crs(epsg=25833)
 
-    # gdf.plot()
-    # plt.savefig(f'{folder}/osm_trails.png')
-    # plt.close()
-
     # Rasterize
     minx, miny, maxx, maxy = utm33_bbox
     width = int(maxx - minx)
@@ -438,6 +413,17 @@ def get_trail_map_osm(utm33_bbox, folder="output/", reduction_factor=5, search_i
 
 
 def get_buildings_osm(utm33_bbox, folder="output/", reduction_factor=5, search_id=0):
+    """
+    Retrieves building data from the OpenStreetMap Overpass API within a given bounding box,
+    rasterizes the buildings, and saves the resulting raster as a NumPy array.
+
+    Args:
+        utm33_bbox (tuple): The bounding box coordinates in UTM Zone 33N projection.
+        folder (str, optional): The folder path to save the output files. Defaults to "output/".
+        reduction_factor (int, optional): The factor by which to downsample the raster. Defaults to 5.
+        search_id (int, optional): The ID of the search. Defaults to 0.
+    """
+    
     # Convert the bounding box to WGS84 for overpass API
     min_wsg = transform_coords_crs(utm33_bbox[0], utm33_bbox[1], 25833, 4326)
     max_wsg = transform_coords_crs(utm33_bbox[2], utm33_bbox[3], 25833, 4326)
@@ -490,10 +476,6 @@ def get_buildings_osm(utm33_bbox, folder="output/", reduction_factor=5, search_i
     # Convert to UTM (matching projection for rasterization)
     gdf = gdf.to_crs(epsg=25833)
 
-    # gdf.plot()
-    # plt.savefig(f'{folder}/osm_buildings.png')
-    # plt.close()
-
     # Rasterize
     minx, miny, maxx, maxy = utm33_bbox
     width = int(maxx - minx)
@@ -525,6 +507,20 @@ def get_buildings_osm(utm33_bbox, folder="output/", reduction_factor=5, search_i
 
 
 def get_railways_osm(utm33_bbox, folder="output/", reduction_factor=5, search_id=0):
+    """
+    Retrieves railway data from the OpenStreetMap (OSM) API within the specified bounding box,
+    rasterizes the railways, and saves the raster as a NumPy array.
+
+    Args:
+        utm33_bbox (tuple): The bounding box coordinates in UTM33 projection (minx, miny, maxx, maxy).
+        folder (str, optional): The folder path to save the NumPy array. Defaults to "output/".
+        reduction_factor (int, optional): The reduction factor for downsampling the raster. Defaults to 5.
+        search_id (int, optional): The search ID for identifying the railway data. Defaults to 0.
+
+    Returns:
+        None
+    """
+    
     # Convert the bounding box to WGS84 for overpass API
     min_wsg = transform_coords_crs(utm33_bbox[0], utm33_bbox[1], 25833, 4326)
     max_wsg = transform_coords_crs(utm33_bbox[2], utm33_bbox[3], 25833, 4326)
@@ -585,9 +581,6 @@ def get_railways_osm(utm33_bbox, folder="output/", reduction_factor=5, search_id
         railway_gdf.crs = 'EPSG:4326'  # WGS84
         railway_gdf = railway_gdf.to_crs(epsg=25833)
 
-        # railway_gdf.plot()
-        # plt.savefig(f'{folder}/osm_railways.png')
-    
         railway_raster = rasterize_gdf(railway_gdf, height, width, transform)
     
     if not road_line_geometries:
@@ -598,9 +591,6 @@ def get_railways_osm(utm33_bbox, folder="output/", reduction_factor=5, search_id
         road_gdf = gpd.GeoDataFrame(geometry=road_line_geometries)
         road_gdf.crs = 'EPSG:4326'  # WGS84
         road_gdf = road_gdf.to_crs(epsg=25833)
-
-        # road_gdf.plot()
-        # plt.savefig(f'{folder}/osm_road_bridge_tunnel.png')
 
         road_raster = rasterize_gdf(road_gdf, height, width, transform)
         matrix_value_padding(road_raster, 1, 10)    # padding roads

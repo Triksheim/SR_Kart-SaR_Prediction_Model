@@ -47,6 +47,7 @@ def debug_stats_print():
 #############################################################
 
 
+
 # Function to encode terrain types based on RGB values
 def terrain_encoding(terrain_type_encoding, terrain_rgb_values, terrain_filepath, folder="output/array/", search_id=0):
     """
@@ -216,9 +217,21 @@ def calc_steepness(height_matrix):
 
 
 
+def combine_terrain_type_and_slope(terrain_type_matrix, slope_matrix, method="multiply", folder="output/array/", search_id=0):
+    """
+    Combines the terrain type matrix and slope matrix to create a combined terrain score matrix.
+    
+    Parameters:
+    terrain_type_matrix (numpy.ndarray): The matrix representing the terrain type.
+    slope_matrix (numpy.ndarray): The matrix representing the slope.
+    method (str, optional): The method used to combine the matrices. Defaults to "multiply".
+    folder (str, optional): The folder path to save the output matrix. Defaults to "output/array/".
+    search_id (int, optional): The search ID used in the output matrix file name. Defaults to 0.
+    
+    Returns:
+    numpy.ndarray: The combined terrain score matrix.
+    """
 
-
-def combine_terrain_type_and_slope(terrain_type_matrix, slope_matrix, method="mean", folder="output/array/", search_id=0):
     slope_matrix[terrain_type_matrix == 1] = 1  # Exclude elevation data from trails
     combined_matrix = combine_matrixes(terrain_type_matrix, slope_matrix, method)
     print(f"Combined terrain score matrix saved to: {folder}{search_id}_terrain_score_matrix.npy")
@@ -290,8 +303,7 @@ def movement(matrix, start_idx, move_dir, obstacle_threshold):
     """ Returns new position and energy cost for the movement.
         Used in branching_movement.
     """
-    #global cnt
-    #cnt += 1
+    
     x0, y0 = start_idx
     sx, sy = move_dir
 
@@ -328,17 +340,44 @@ def movement(matrix, start_idx, move_dir, obstacle_threshold):
 
 
 def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_resource, sets, ring_25, ring_50, terrain_change_threshold, random_branching_chance, obstacle_threshold):
-    global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
+    """
+    Perform branching movement algorithm on a matrix.
+    Saves the coordinates in different sets based on energy left.
+
+    Args:
+        matrix (numpy.ndarray): The matrix representing the terrain.
+        start_idx (tuple): The starting index for the movement.
+        move_dir (tuple): The initial movement direction.
+        initial_move_resource (int): The initial movement resource.
+        move_resource (int): The current movement resource.
+        sets (tuple): A tuple containing the sets from the main function.
+        ring_25 (int): The threshold for the 25% ring.
+        ring_50 (int): The threshold for the 50% ring.
+        terrain_change_threshold (int): The threshold for significant terrain change.
+        random_branching_chance (float): The chance of random branching.
+        obstacle_threshold (int): The threshold for obstacle detection.
+
+    Returns:
+        None
+    """
     
-    green, yellow, red, branch_log, last_cutoff = sets   # referenced sets from main function
-    stack = [(start_idx, move_dir, move_resource)]
+    # debugging
+    global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
     
     start_time = time.perf_counter()
     time_limit = 300
 
+    # referenced sets from main function
+    green, yellow, red, branch_log, last_cutoff = sets
+
+    # Initialize stack with starting point
+    stack = [(start_idx, move_dir, move_resource)]
+    
+    # Thresholds for to group into different rings
     ring_25_threshold = initial_move_resource - ring_25
     ring_50_threshold = initial_move_resource - ring_50
     cutoff_threshold = initial_move_resource - (ring_50 + ((initial_move_resource - ring_50) / 2))
+
 
 
     while stack:
@@ -368,7 +407,7 @@ def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_
                 last_cutoff.add((new_x, new_y))
         
 
-        # Branches kill offs
+        # Branches kill offs (Early end if low chance of improvement)
         if move_resource < initial_move_resource - (ring_25 * 1.1) and (new_x, new_y) in green:
             cnt_kill_1 += 1
             continue
@@ -461,13 +500,26 @@ def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_
             # Continue in the same direction
             else:
                 stack.append(((new_x, new_y), move_dir, energy_left))
+
+
+        # Energy depleted, end branch      
         else:
-            red.add((new_x, new_y))  # Energy depleted, end branch
+            red.add((new_x, new_y))
 
 
 
 def calculate_map_extension(max_distance, square_radius):
-    #print(square_radius, max_distance, extra_space)
+    """
+    Calculates the map extension based on the maximum distance and square radius.
+
+    Parameters:
+    - max_distance (float): The maximum distance.
+    - square_radius (float): The square radius.
+
+    Returns:
+    - map_extension (int): The calculated map extension.
+    """
+    
     map_square = 2*square_radius
     map_size = 2*max_distance
     print(f'{map_size=}')
@@ -493,16 +545,55 @@ def calculate_map_extension(max_distance, square_radius):
 
 
 def create_slope_matrix(height_matrix, norm_cap, square_factor, folder, search_id):
-    slope_matrix = calc_steepness(height_matrix)
+    """
+    Create a slope matrix based on the given height matrix.
+
+    Args:
+        height_matrix (numpy.ndarray): The input height matrix.
+        norm_cap (float): The maximum value for the slope matrix.
+        square_factor (float): The factor to apply to the inverse slope matrix.
+        folder (str): The folder path to save the slope matrix.
+        search_id (int): The search ID for the slope matrix.
+
+    Returns:
+        numpy.ndarray: The inverse slope matrix.
+
+    """
+    # Calculate the slope matrix
+    slope_matrix = calc_steepness(height_matrix) 
+
+    # Cap the slope matrix values
     slope_matrix[slope_matrix > norm_cap] = norm_cap
+
+    # Normalize the slope matrix
     norm_slope_matrix = normalize_array(slope_matrix, norm_cap)
+
+    # Inverse the slope matrix
     inv_slope_matrix = 1 - norm_slope_matrix
-    inv_slope_matrix = inv_slope_matrix ** square_factor # more weight to lower values
+    inv_slope_matrix = inv_slope_matrix ** square_factor # more seperation between values
+
     np.save(f'{folder}id{search_id}_slope_matrix.npy', inv_slope_matrix)
     return inv_slope_matrix
 
-def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config):
-    logfile = f'{config.LOG_DIR}logfile.txt'
+
+
+def branching_simulation(terrain_score_matrix, d25, d50, d75, config):
+    """
+    Simulates branching movement in the terrain score matrix based on given parameters.
+
+    Args:
+        terrain_score_matrix (numpy.ndarray): Matrix representing the terrain score.
+        d25 (float): Distance value for the 25th percentile.
+        d50 (float): Distance value for the 50th percentile.
+        d75 (float): Distance value for the 75th percentile.
+        config (object): Configuration object containing various parameters.
+
+    Returns:
+        tuple: A tuple containing three numpy arrays representing the red points, yellow points, and green points.
+
+    """
+
+    logfile = config.LOG_FILE
     worse_terrain_threshold = config.TERRAIN_CHANGE_THRESHOLD
     obstacle_threshold = config.OBSTACLE_THRESHOLD
     random_branching_chance = config.RANDOM_FACTOR
@@ -519,6 +610,7 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
 
     max_distance = ring_75
     
+    # Initialize sets for storing coordinates in different groups
     green_coords = set()
     yellow_coords = set()
     red_coords = set()
@@ -526,16 +618,17 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
     last_cutoff = set()
     sets = (green_coords, yellow_coords, red_coords, branches_log, last_cutoff)
 
+    # For logging progress
     step_percentage = (100 / (config.ITERATIONS * 8))
     completion_percentage = 0
-
     with open(logfile, 'ab') as f:
         text = f'{completion_percentage}%'
         f.write(text.encode())
 
     time_limit = 300
-
     sim_start_time = time.perf_counter()
+
+    # Calls branching_movement for each direction (8 directions in total) per iteration
     for n in range(config.ITERATIONS):
         curr_dir = 1
         for i in range(-1, 2, 1):
@@ -552,7 +645,7 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
                     sets = (green_coords, yellow_coords, red_coords, branches_log, last_cutoff)
                     branching_movement(terrain_score_matrix, (center[0], center[1]), move_direction, max_distance, max_distance, sets, ring_25, ring_50, worse_terrain_threshold, random_branching_chance, obstacle_threshold)
                     
-                    
+                    # For logging progress
                     log_step_back = len(f'{completion_percentage:.0f}%')
                     completion_percentage += step_percentage
                     with open(logfile, 'rb+') as f:
@@ -562,6 +655,7 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
                         f.seek(max(0, file_size - log_step_back), 0)  # Move pointer back
                         f.write(text.encode())  # Write the updated percentage
     
+    # For logging progress
     with open(logfile, 'rb+') as f:
         f.seek(0, 2)  # Move to the end of the file
         file_size = f.tell()
@@ -570,9 +664,7 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
         f.seek(max(0, file_size - log_step_back), 0)  # Move pointer back
         f.write(text.encode())  # Write the final percentage
 
-    #end_time = time.perf_counter()
-
-
+    
     #print(f'Params: {config.ITERATIONS} iter, {config.RANGE_FACTOR} b_range, {worse_terrain_threshold} terrain_thrshld, {random_branching_chance} random_chance')
     #print(f"Branching simulation took {end_time - start_time} seconds")
     #print(f'Unique paths simulated: {len(red_coords)}')  # number of endpoints/paths
@@ -587,45 +679,59 @@ def branching_simulation(terrain_score_matrix, search_id, d25, d50, d75, config)
 
 
 def create_map_layer(terrain_score_matrix, start_coords, red_points, yellow_points, green_points, folder, search_id, config):
+    """
+    Create map layers based on the terrain score matrix and point data.
+
+    Args:
+        terrain_score_matrix (numpy.ndarray): The terrain score matrix.
+        start_coords (tuple): The starting coordinates.
+        red_points (list): List of red points.
+        yellow_points (list): List of yellow points.
+        green_points (list): List of green points.
+        folder (str): The folder to save the map layers.
+        search_id (str): The search ID.
+        config (Config): The configuration object.
+
+    Returns:
+        tuple: A tuple containing the map layers for 25%, 50%, and 75% confidence levels.
+    """
+
+    # Compute concave hulls from the red, yellow, and green points
     concave_hull_r = compute_concave_hull_from_points(red_points, config.HULL_ALPHA)
     concave_hull_y = compute_concave_hull_from_points(yellow_points, config.HULL_ALPHA)
     concave_hull_g = compute_concave_hull_from_points(green_points, config.HULL_ALPHA)
     
+    # Save branching result as png for logging
     plot_branching_result(terrain_score_matrix, concave_hull_r, concave_hull_y, concave_hull_g, config, save=True)
-    #plot_branching_result(terrain_score_matrix, concave_hull_r, concave_hull_y, concave_hull_g, config, save=False)
 
+    # Create map overlays for the 25%, 50%, and 75% confidence levels with CRS EPSG:4326
     polygon_75 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", output_crs="EPSG:4326", folder=folder, reduction_factor=config.REDUCTION_FACTOR, search_id=search_id)
     polygon_50 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_y, color="yellow", output_crs="EPSG:4326", folder=folder, reduction_factor=config.REDUCTION_FACTOR, search_id=search_id)
     polygon_25 = create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_g, color="green", output_crs="EPSG:4326", folder=folder, reduction_factor=config.REDUCTION_FACTOR, search_id=search_id)
 
-    # create_polygon_map_overlay(terrain_score_matrix, start_coords, concave_hull_r, color="red", crs="EPSG:25833", folder=folder, search_id=search_id)
-
     return polygon_25, polygon_50, polygon_75
     
     
-def create_search_sectors(terrain_score_matrix, sector_size=50_000, reduction_factor=5):
-    height = terrain_score_matrix.shape[0]
-    width = terrain_score_matrix.shape[1]
-    
-    # Calculate the side length of the sector in real meters
-    sector_side_length_m = np.sqrt(sector_size)
-    
-    # Convert the side length from meters to indices
-    sector_side_length_idx = int(sector_side_length_m / reduction_factor)
-    
-    # Initialize a list to store the sectors
-    sectors = []
-    
-    # Iterate through the terrain score matrix to create sectors
-    for i in range(0, height, sector_side_length_idx):
-        for j in range(0, width, sector_side_length_idx):
-            sector = terrain_score_matrix[i:i + sector_side_length_idx, j:j + sector_side_length_idx]
-            sectors.append(sector)
-    
-    return sectors
 
 
 def create_search_sectors_with_polygons(matrix, coords, hull_polygon, sector_size=50_000, reduction_factor=5, output_crs="EPSG:25833", folder='output/overlays/', search_id=0):
+    """
+    Create search sectors with polygons based on a matrix, coordinates, and a hull polygon.
+
+    Args:
+        matrix (numpy.ndarray): The matrix used to determine the size of the search sectors.
+        coords (tuple): The coordinates (latitude, longitude) used as the center of the search sectors.
+        hull_polygon (shapely.geometry.Polygon): The hull polygon used to determine the intersection with the search sectors.
+        sector_size (int, optional): The size of each search sector in square meters. Defaults to 50,000.
+        reduction_factor (int, optional): The reduction factor used to calculate the map diameter. Defaults to 5.
+        output_crs (str, optional): The output coordinate reference system (CRS) for the search sectors. Defaults to "EPSG:25833".
+        folder (str, optional): The folder path to save the search sector polygons. Defaults to 'output/overlays/'.
+        search_id (int, optional): The ID of the search. Defaults to 0.
+
+    Returns:
+        list: A list of intersected sector polygons.
+    """
+    
     height, width = matrix.shape
     map_diameter = height * reduction_factor  # Meters
     distance_per_index = map_diameter / height  # Meters per index in the matrix

@@ -23,12 +23,12 @@ if __name__ == "__main__":
     plot = True
 
     # Set to collect data from GeoNorge and OSM
-    collect = True
+    collect = False
     plot_collect = False
 
     ## preprocessing functions start ## -----------------------------------------------------------
 
-    run_all_pp = True   # Set to run all preprocessing functions or set individual functions below
+    run_all_pp = False   # Set to run all preprocessing functions or set individual functions below
 
     # Encode terrain type data to 0-1 values based on RGB values
     encode = run_all_pp or False
@@ -109,16 +109,16 @@ if __name__ == "__main__":
     # Branching simulation
     branching_sim = True
     plot_branching = True
-    scatter_endpoints = True                          # scatter endpoints in plot
+    scatter_endpoints = True                         # scatter endpoints in plot
     branching_sim_iterations = 8                    # number of iterations for each direction (iter * 8)
     b_range_factor = 1.25                 # factor for "max" travel distance                
     hull_alpha = 15                                       # "concavity" of the search area hull                                           # percentage of max distance for 50% ring
     terrain_change_threshold = 0.3                           # threshold for branching when large terrain change (0-1)
     random_branching_chance = 2                             # chance of random branching (n/10.000)
-    obstacle_threshold = 0.2                               # threshold for obstacle detection (0-1)
-    d1 = 600
-    d2 = 1800
-    d3 = 3200
+    obstacle_threshold = 0.1                               # threshold for obstacle detection (0-1)
+    d1 = 200
+    d2 = 600
+    d3 = 1500
 
     # Create map overlay layer with CRS from branching simulation results
     create_map_overlay = True if branching_sim else False
@@ -139,8 +139,10 @@ if __name__ == "__main__":
     # start_lat = 68.443336
     # start_lng = 17.527965
 
-    start_lat = 68.26615067072053
-    start_lng = 14.537723823348557
+    start_lat = 68.43312
+    start_lng = 17.45946
+
+    
 
     #59.2669333525745, 10.976414680480959
 
@@ -301,7 +303,7 @@ if __name__ == "__main__":
 
         norm_steepness_matrix = steepness_matrix / normalization_cap                      # normalize values to 0-1
         inv_norm_steepness_matrix = 1 - norm_steepness_matrix                             # invert values
-        #inv_norm_steepness_matrix = inv_norm_steepness_matrix ** square_factor                       # square values for better separation at extremes
+        inv_norm_steepness_matrix = inv_norm_steepness_matrix ** square_factor                       # square values for better separation at extremes
         
         #inv_norm_steepness_matrix[inv_norm_steepness_matrix < 0.1] = 0                    # set values below 0.1 to 0
 
@@ -448,8 +450,8 @@ if __name__ == "__main__":
 
 
         # convert sets to np arrays
-        red_points = np.array(list(red_coords)[::10])
-        yellow_points = np.array(list(yellow_coords)[::3])
+        red_points = np.array(list(red_coords)[::2])
+        yellow_points = np.array(list(yellow_coords)[::2])
         green_points = np.array(list(green_coords)[::2])
 
 
@@ -474,14 +476,14 @@ if __name__ == "__main__":
             plt.imshow(terrain_score_matrix, cmap='terrain', interpolation='nearest')
             plt.colorbar(label="Terreng: Vaskelig  ->  Lett")
 
-            circle = Circle((radius, radius), (d1/reduction_factor), color="green", linewidth=2, fill=False)   # search area circle
-            plt.gca().add_patch(circle)
+            # circle = Circle((radius, radius), (d1/reduction_factor), color="black", linewidth=2, fill=False)   # search area circle
+            # plt.gca().add_patch(circle)
 
-            circle = Circle((radius, radius), (d2/reduction_factor), color="yellow", linewidth=2, fill=False)   # search area circle
-            plt.gca().add_patch(circle)
+            # circle = Circle((radius, radius), (d2/reduction_factor), color="black", linewidth=2, fill=False)   # search area circle
+            # plt.gca().add_patch(circle)
 
-            circle = Circle((radius, radius), (d3/reduction_factor), color="red", linewidth=2, fill=False)   # search area circle
-            plt.gca().add_patch(circle)
+            # circle = Circle((radius, radius), (d3/reduction_factor), color="black", linewidth=2, fill=False)   # search area circle
+            # plt.gca().add_patch(circle)
 
 
             # circle = Circle((radius, radius), (d1/reduction_factor), color="black", linewidth=2, fill=False)   # search area circle
@@ -498,22 +500,22 @@ if __name__ == "__main__":
 
             # if concave_hull_r:
             #     x_r, y_r = get_polygon_coords_from_hull(concave_hull_r)
-            #     plt.fill(x_r, y_r, edgecolor='r',linewidth=3, fill=False)
+            #     plt.fill(x_r, y_r, edgecolor='r',linewidth=4, fill=False)
             # if concave_hull_y:
             #     x_y, y_y = get_polygon_coords_from_hull(concave_hull_y)
-            #     plt.fill(x_y, y_y, edgecolor='yellow',linewidth=3, fill=False)
+            #     plt.fill(x_y, y_y, edgecolor='yellow',linewidth=4, fill=False)
             # if concave_hull_g:
             #     x_g, y_g = get_polygon_coords_from_hull(concave_hull_g)
-            #     plt.fill(x_g, y_g, edgecolor='g',linewidth=3, fill=False)
+            #     plt.fill(x_g, y_g, edgecolor='g',linewidth=4, fill=False)
 
             # plot endpoints
             if scatter_endpoints:
-                plt.scatter(red_points[:,0], red_points[:,1], color='red', s=5)
+                plt.scatter(red_points[:,0], red_points[:,1], color='red', s=1)
 
                 #plt.scatter(last_cutoff_points[:,0], last_cutoff_points[:,1], color='pink', s=5)
 
-                plt.scatter(yellow_points[:,0], yellow_points[:,1], color='yellow', s=5)
-                plt.scatter(green_points[:,0], green_points[:,1], color='green', s=5)
+                plt.scatter(yellow_points[:,0], yellow_points[:,1], color='yellow', s=1)
+                plt.scatter(green_points[:,0], green_points[:,1], color='green', s=1)
                 
             
             plt.title("Branching result plot")

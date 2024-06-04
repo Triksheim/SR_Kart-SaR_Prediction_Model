@@ -683,3 +683,7 @@ def create_square_polygon(center_x, center_y, side_length):
         (center_x - half_side, center_y + half_side)
     ]
     return Polygon(corners)
+
+def write_to_log_file(log_file, message):
+    with open(log_file, 'a') as file:
+        file.write(f'{message}')
