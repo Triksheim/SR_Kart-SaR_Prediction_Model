@@ -1,3 +1,35 @@
+"""
+This module provides functions for retrieving and saving various geo data based on latitude and longitude coordinates.
+It includes functions for getting terrain type maps, height maps, trail maps, building maps, and railway maps.
+The retrieved data is saved in different file formats such as TIFF and NumPy arrays.
+
+The main function in this module is `get_all_geo_data`, which takes latitude and longitude coordinates as input and retrieves and saves the geo data.
+
+Other helper functions in this module include functions for making requests to web services, extracting data from responses, creating composite images, and writing to log files.
+
+Note: 
+This module requires the `utility` module to be present in the same directory or package.
+The module is designed to be used in the SAR (Search and Rescue) application SR Kart created during bachelor's thesis at UiT The Arctic University of Norway.
+The tools provided here are intended to support the development of a web-based application for search and rescue operations in Norway,
+focusing on the use of geospatial data to optimize search strategies and improve the efficiency of rescue missions.
+
+dependencies:
+    - utility   (custom module)
+    - requests
+    - PIL
+    - rasterio
+    - numpy
+    - geopandas
+    - pandas
+    - shapely
+    - concurrent
+
+
+Author: Martin Riksheim
+Date: 2024
+"""
+
+
 try:
     from utility import (
         transform_coordinates_to_utm,
@@ -39,6 +71,8 @@ import geopandas as gpd
 import pandas as pd
 from shapely.geometry import LineString
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+
 
 
 def get_all_geo_data(search_id, lat, lng, square_radius=500, map_extention=0, folder="output/", reduction_factor=5, log_file=None):

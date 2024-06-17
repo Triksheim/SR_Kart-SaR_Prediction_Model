@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import time
 
 
-  # ONLY FOR LOCAL TESTING AND DEVELOPMENT       
+  # ONLY FOR LOCAL TESTING, DEVELOPMENT and DEBUGGING       
 
 
 if __name__ == "__main__":

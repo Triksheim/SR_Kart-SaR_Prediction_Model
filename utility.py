@@ -1,3 +1,35 @@
+"""
+This Python module provides a suite of tools for geographical data manipulation and analysis, particularly focusing on coordinate transformations, geospatial raster and vector data processing, and visualization. Key functionalities include:
+
+- Transforming latitude and longitude to UTM coordinates and vice versa.
+- Calculating bounding boxes based on UTM coordinates.
+- Creating bounding box strings for web coverage service (WCS) requests.
+- Converting geographic coordinates to bounding boxes with specified radii.
+- Extracting GeoTIFF data from multipart responses and performing operations on them such as reading, merging, and creating composite TIFF images.
+- Manipulating and analyzing raster data using Rasterio and creating visualizations with Matplotlib and Pillow.
+- Performing complex geospatial operations with Shapely and GeoPandas, such as calculating alpha shapes, creating convex hulls, and generating map overlays.
+
+Note:
+The module is designed to be used in the SAR (Search and Rescue) application SR Kart created during bachelor's thesis at UiT The Arctic University of Norway.
+The tools provided here are intended to support the development of a web-based application for search and rescue operations in Norway,
+focusing on the use of geospatial data to optimize search strategies and improve the efficiency of rescue missions.
+
+Dependencies:
+- pyproj
+- rasterio
+- PIL
+- matplotlib
+- numpy
+- shapely
+- scipy
+- geopandas
+
+Author: Martin Riksheim
+Date: 2024
+"""
+
+
+
 
 import pyproj
 import rasterio
@@ -7,8 +39,8 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 import numpy as np
-from shapely.geometry import Polygon, MultiLineString, MultiPolygon, MultiPoint, LineString, GeometryCollection
-from shapely.ops import polygonize, unary_union, cascaded_union, polygonize_full, nearest_points
+from shapely.geometry import Polygon, MultiLineString, MultiPolygon,  GeometryCollection
+from shapely.ops import polygonize, unary_union, nearest_points
 from scipy.spatial import Delaunay
 import geopandas as gpd
 from rasterio.features import rasterize
@@ -239,7 +271,9 @@ def calculate_image_size(images):
 
 
 def create_composite_image(images, output_path):
-    """Create a composite image from a list of images."""
+    """
+    Create a composite image from a list of images.
+    """
     # Calculate the size of the composite image
     composite_width, composite_height = calculate_image_size(images)
     composite_image = Image.new('RGB', (composite_width, composite_height))

@@ -1,3 +1,25 @@
+"""
+This module contains a suite of utility functions specifically designed for enhancing geographic data manipulation and analysis in search and rescue (SAR) operations.
+It offers methods for terrain encoding based on RGB values, integrating trails, buildings, and railways into terrain data, and generating slope matrices for terrain assessment.
+The module also provides functions for simulating lost person movement in the terrain based on terrain score matrices
+and creating map layers for most efficent search areas based on the results of the simulation.
+
+Note:
+The module is designed to be used in the SAR (Search and Rescue) application SR Kart created during bachelor's thesis at UiT The Arctic University of Norway.
+The tools provided here are intended to support the development of a web-based application for search and rescue operations in Norway,
+focusing on the use of geospatial data to optimize search strategies and improve the efficiency of rescue missions.
+
+Dependencies:
+    - utility (custom module)
+    - numpy
+    - geopandas
+    - matplotlib
+    
+
+Author: Martin Riksheim
+Date: 2024
+"""
+
 try:
     from utility import (
         matrix_value_padding,
@@ -26,25 +48,6 @@ import math
 import random
 import time
 
-
-#############################################################
-# """ For debugging branching simulation """
-# cnt = 0
-# cnt2 = 0
-# cnt3 = 0
-# cnt4 = 0
-cnt_kill_1 = 0
-cnt_kill_2 = 0
-cnt_kill_3 = 0
-def debug_stats_print():
-    global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
-    print(f'1:{cnt_kill_1},2:{cnt_kill_2},3:{cnt_kill_3}, Total:{cnt_kill_1+cnt_kill_2+cnt_kill_3} Killed branches')
-
-    # print(f'{cnt} Steps')
-    # print(f'{cnt2} Branching, random')
-    # print(f'{cnt4} Branching, worse terrain')
-    # print(f'{cnt3} Direction change, obstacle')
-#############################################################
 
 
 
@@ -254,7 +257,7 @@ def combine_matrixes(terrain_type, slope, method="mean"):
 
 
 def calc_travel_distance(matrix, energy, center, end_x, end_y, step_limit=9999):
-    """ Only used for staright line traversal
+    """ Only used for staright line traversal simulation. Not used in the final implementation.
     """
     x0, y0 = center
     x1, y1 = end_x, end_y
@@ -341,7 +344,7 @@ def movement(matrix, start_idx, move_dir, obstacle_threshold):
 
 def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_resource, sets, ring_25, ring_50, terrain_change_threshold, random_branching_chance, obstacle_threshold):
     """
-    Perform branching movement algorithm on a matrix.
+    Perform branching movement algorithm in a matrix.
     Saves the coordinates in different sets based on energy left.
 
     Args:
@@ -360,9 +363,6 @@ def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_
     Returns:
         None
     """
-    
-    # debugging
-    global cnt, cnt2, cnt3, cnt4, cnt_kill_1, cnt_kill_2, cnt_kill_3
     
     start_time = time.perf_counter()
     time_limit = 300
@@ -409,13 +409,10 @@ def branching_movement(matrix, start_idx, move_dir, initial_move_resource, move_
 
         # Branches kill offs (Early end if low chance of improvement)
         if move_resource < initial_move_resource - (ring_25 * 1.1) and (new_x, new_y) in green:
-            cnt_kill_1 += 1
             continue
         if move_resource < initial_move_resource - (ring_50 * 1.1) and (new_x, new_y) in yellow:
-            cnt_kill_2 += 1
             continue
         if move_resource < initial_move_resource - ((ring_50 + ((initial_move_resource - ring_50)/2)) * 1.1) and (new_x, new_y) in last_cutoff:
-            cnt_kill_3 += 1
             continue
        
         
@@ -664,12 +661,6 @@ def branching_simulation(terrain_score_matrix, d25, d50, d75, config):
         f.seek(max(0, file_size - log_step_back), 0)  # Move pointer back
         f.write(text.encode())  # Write the final percentage
 
-    
-    #print(f'Params: {config.ITERATIONS} iter, {config.RANGE_FACTOR} b_range, {worse_terrain_threshold} terrain_thrshld, {random_branching_chance} random_chance')
-    #print(f"Branching simulation took {end_time - start_time} seconds")
-    #print(f'Unique paths simulated: {len(red_coords)}')  # number of endpoints/paths
-    #debug_stats_print()
-
     # convert sets to np arrays
     red_points = np.array(list(red_coords)[::10])
     yellow_points = np.array(list(yellow_coords)[::3])
@@ -769,6 +760,5 @@ def create_search_sectors_with_polygons(matrix, coords, hull_polygon, sector_siz
         gdf_single = gpd.GeoDataFrame(index=[0], crs=output_crs, geometry=[polygon])
         intersected_sector_polygons.append(gdf_single.geometry[0])
         gdf_single.to_file(f'{folder}id{search_id}_sector_{idx}_EPSG{output_crs[5:]}.geojson', driver='GeoJSON')
-        #print(f'Sector {idx} saved to {folder}id{search_id}_sector_{idx}_EPSG{output_crs[5:]}.geojson')
 
     return intersected_sector_polygons

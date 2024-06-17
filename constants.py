@@ -1,3 +1,7 @@
+"""
+This module contains the constants used in the model.
+The `ModelConfig` class contains the configuration parameters for the model.
+"""
 
 class ModelConfig:
     

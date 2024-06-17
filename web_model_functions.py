@@ -1,3 +1,36 @@
+
+"""
+This module serves as the backend which makes functions callable from a web-based SAR application.
+
+Usage:
+This module is intended to be deployed as part of a larger SAR application infrastructure,
+capable of being called from a web server setup to handle requests for data processing and simulation tasks.
+
+Key features include:
+- Collecting geospatial data related to terrain, buildings, and pathways.
+- Processing data to create composite terrain models that incorporate natural and artificial features.
+- Simulating search operations based on terrain analysis to optimize search strategies.
+- Generating search sectors for efficient resource allocation during SAR operations.
+
+Note:
+The module is designed to be used in the SAR (Search and Rescue) application SR Kart created during bachelor's thesis at UiT The Arctic University of Norway.
+The tools provided here are intended to support the development of a web-based application for search and rescue operations in Norway,
+focusing on the use of geospatial data to optimize search strategies and improve the efficiency of rescue missions.
+
+Dependencies:
+- SAR_model_functions (custom module)
+- utility             (custom module)
+- geo_services        (custom module)
+- constants           (custom module)
+- numpy
+- geopandas
+
+
+Author: Martin Riksheim
+Date: 2024
+"""
+
+
 try:
     from SAR_model_functions import (
         terrain_encoding,
