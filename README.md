@@ -19,14 +19,19 @@ This application is not intended to run as a standalone program but is designed 
 
 
 ### Testing Locally
-The model can be tested locally by running the script `web_test.py`, which simulates calls from a web application:
-- Modify the parameters `lat`, `lng` to choose the center point of the search area.
-- Adjust `d25`, `d50`, `d75` to define the overall search area size.
-- The test script creates local directories for data management, logging, and generation of results.
+The model can be tested locally by running the script `run_local_test.py` which in an example that uses the `SARModel` class to perform the different operations executed when called from web.
+Usage of the 'SARModel' class can be customized to add/remove data, change data processing steps and document results between steps.
+Parameters are loaded into the model from a config text file `config_file.txt` at init.
+
+The main parameters are:
+- `lat`, `lng` Adjust to choose the center point of the search area.
+- `r25`, `r50`, `r75` Probaility search area sector radiuses, this changes the overall search size.
+
+The model class creates local directories for data management, logging, and generation of results.
 
 ### Geographical Limitations
 National databases from GeoNorge are used for most of the geodata, therefore the program will not function outside of Norwegian land borders without modifications to utilize another data source.
-<br> <br>
+
 
 # How It Works and Example Results
 
@@ -45,20 +50,19 @@ All collected data is compressed into a manageable size and rasterized. From the
 
 Here is an example of a procsessed **Terrain Score Matrix**:
 
-<img src="https://github.com/Triksheim/SR_Kart-SaR_Prediction_Model/assets/59808763/53327d6d-bd57-45e4-9b4d-40c38a7b90eb" width="600" alt="Terrain Matrix Image">
+<img src="https://github.com/Triksheim/SR_Kart-SaR_Prediction_Model/assets/59808763/53327d6d-bd57-45e4-9b4d-40c38a7b90eb" width="600" alt="Terrain Matrix Image">\
 
 ## Simulation and Prediction
 The simulation predicts areas with the highest probability of finding the lost person by simulating numerous potential routes a person could have taken. The simulation uses a branching algorithm, and the reach of each route from the starting point is calculated using the terrain score matrix. Each step a person takes on a route has a cost, determined by the terrain score, which is deducted from a movement resource pool. This approach results in challenging routes with rough terrain reaching shorter distances than routes on easier terrain.
 
 Example of Simulation Results as search zones plotted on top of the **Terrain Score Matrix**:
 
-<img src="https://github.com/Triksheim/SR_Kart-SaR_Prediction_Model/assets/59808763/6927ee8a-3dec-4bce-8869-669d20c92ef1" width="600" alt="Result Image">
-<br> <br>
+<img src="https://github.com/Triksheim/SR_Kart-SaR_Prediction_Model/assets/59808763/6927ee8a-3dec-4bce-8869-669d20c92ef1" width="500" alt="Result Image">\
+
 The increased probability search zones are created into GeoJSON polygon objects with corresponding coordinate reference system which can be overlayed on GIS applications or most standard map viewers.
 Here are the map layers from the simulation shown as an overlay on a real map of the area in the GIS application QGIS:
-<br>
-<img src="https://github.com/Triksheim/SR_Kart-SaR_Prediction_Model/assets/59808763/97f7c9bf-2493-46df-a921-eafbe4ca3d87" width="800" alt="QGIS Image">
 
-<br> <br>
-Logfile showing the different procsess that are executed during the models runtime and time taken for for each category: <br>
-<img src="https://github.com/Triksheim/SR_Kart-SaR_Prediction_Model/assets/59808763/bd2a3417-8177-4431-be90-bec2ffceb112" width="600" alt="logfile">
+<img src="https://github.com/Triksheim/SR_Kart-SaR_Prediction_Model/assets/59808763/97f7c9bf-2493-46df-a921-eafbe4ca3d87" width="800" alt="QGIS Image">\\
+
+
+

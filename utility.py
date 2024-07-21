@@ -536,7 +536,7 @@ def get_polygon_coords_from_hull(hull):
 
 
 
-def create_polygon_map_overlay(matrix, coords, hull, color="red", output_crs="EPSG:25833", folder='output/overlays/overlay', reduction_factor=5, search_id=0):
+def create_polygon_map_overlay(matrix, coords, hull, color="red", output_crs="EPSG:25833", folder='output/overlays/overlay', reduction_factor=5, search_id=0) -> Polygon:
     """
     Create a polygon map overlay from a matrix, coordinates, and a convex hull.
 
@@ -721,3 +721,38 @@ def create_square_polygon(center_x, center_y, side_length):
 def write_to_log_file(log_file, message):
     with open(log_file, 'a') as file:
         file.write(f'{message}')
+
+def calculate_map_extension(max_distance, square_radius):
+    """
+    Calculates the map extension based on the maximum distance and square radius.
+
+    Parameters:
+    - max_distance (float): The maximum distance.
+    - square_radius (float): The square radius.
+
+    Returns:
+    - map_extension (int): The calculated map extension.
+    """
+    
+    map_square = 2*square_radius
+    map_size = 2*max_distance
+    print(f'{map_size=}')
+
+    if map_size <= map_square:
+        map_extension = 0
+    elif map_size <= 3*map_square:
+        map_extension = 1
+    elif map_size <= 5*map_square:
+        map_extension = 2
+    elif map_size <= 7*map_square:
+        map_extension = 3
+    elif map_size <= 9*map_square:
+        map_extension = 4
+    elif map_size <= 11*map_square:
+        map_extension = 5
+    elif map_size <= 13*map_square:
+        map_extension = 6
+    else:
+        map_extension = 7
+    
+    return map_extension
